@@ -1,0 +1,22 @@
+{
+  "id": "/",
+  "name": "Loveline — A little place for love, every day.",
+  "short_name": "Loveline",
+  "description": "A private little place for love, memories, and everyday moments.",
+  "lang": "en",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#fff9f7",
+  "theme_color": "#c85a78",
+  "categories": ["lifestyle", "social"],
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

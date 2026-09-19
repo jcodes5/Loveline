@@ -1,0 +1,145 @@
+@import url("https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap");
+
+@import "tailwindcss";
+
+@config "../tailwind.config.ts";
+
+@layer base {
+  :root {
+    --background: 12 100% 98%;
+    --surface: 0 0% 100%;
+    --surface-muted: 10 100% 97%;
+    --surface-elevated: 0 0% 100%;
+    --foreground: 343 9% 15%;
+    --primary: 344 49% 57%;
+    --primary-dark: 344 42% 46%;
+    --primary-soft: 341 61% 91%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 13 19% 47%;
+    --secondary-foreground: 0 0% 100%;
+    --muted: 340 6% 44%;
+    --muted-foreground: 340 6% 44%;
+    --border: 350 25% 91%;
+    --input: 350 25% 91%;
+    --ring: 344 49% 57%;
+    --success: 145 27% 43%;
+    --warning: 32 55% 46%;
+    --destructive: 356 42% 51%;
+    --destructive-foreground: 0 0% 100%;
+    --info: 207 29% 47%;
+    --radius: 0.75rem;
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 343 9% 15%;
+    --sidebar-primary: 344 49% 57%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 10 100% 97%;
+    --sidebar-accent-foreground: 343 9% 15%;
+    --sidebar-border: 350 25% 91%;
+    --sidebar-ring: 344 49% 57%;
+  }
+
+  .dark {
+    --background: 330 9% 8%;
+    --surface: 330 10% 13%;
+    --surface-muted: 330 11% 16%;
+    --surface-elevated: 330 11% 16%;
+    --foreground: 342 44% 95%;
+    --primary: 342 65% 72%;
+    --primary-dark: 342 65% 72%;
+    --primary-soft: 333 28% 26%;
+    --primary-foreground: 330 9% 8%;
+    --secondary: 14 22% 69%;
+    --secondary-foreground: 330 9% 8%;
+    --muted: 330 10% 70%;
+    --muted-foreground: 330 10% 70%;
+    --border: 330 9% 21%;
+    --input: 330 9% 21%;
+    --ring: 342 65% 72%;
+    --success: 145 27% 58%;
+    --warning: 32 56% 58%;
+    --destructive: 355 56% 66%;
+    --destructive-foreground: 330 9% 8%;
+    --info: 205 36% 64%;
+    --sidebar-background: 330 10% 13%;
+    --sidebar-foreground: 342 44% 95%;
+    --sidebar-primary: 342 65% 72%;
+    --sidebar-primary-foreground: 330 9% 8%;
+    --sidebar-accent: 333 28% 26%;
+    --sidebar-accent-foreground: 342 44% 95%;
+    --sidebar-border: 330 9% 21%;
+    --sidebar-ring: 342 65% 72%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: "Inter", sans-serif;
+    font-synthesis: none;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  button,
+  a {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  ::selection {
+    background: hsl(var(--primary-soft));
+    color: hsl(var(--foreground));
+  }
+
+  :where(p, span, li, h1, h2, h3, h4, h5, h6, a, button, label, td, th) {
+    overflow-wrap: anywhere;
+  }
+
+  :where(button, a, input, textarea, select):focus-visible {
+    outline: 3px solid hsl(var(--ring) / 0.35);
+    outline-offset: 3px;
+  }
+
+  pre,
+  code {
+    overflow-x: auto;
+    white-space: pre;
+  }
+}
+
+@layer utilities {
+  .font-display {
+    font-family: "Cormorant Garamond", Georgia, serif;
+  }
+
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .page-wash {
+    background-image:
+      radial-gradient(circle at 8% 8%, hsl(var(--primary-soft) / 0.35), transparent 28rem),
+      radial-gradient(circle at 90% 4%, hsl(36 100% 95% / 0.5), transparent 24rem);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
