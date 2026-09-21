@@ -104,10 +104,7 @@ export async function registerForNotifications(): Promise<string> {
     throw new Error("Push notifications are not supported in this browser.");
   }
 
-  const registration = await navigator.serviceWorker.register(
-    "/firebase-messaging-sw.js",
-    { scope: "/firebase-cloud-messaging-push-scope/" },
-  );
+  const registration = await navigator.serviceWorker.ready;
   await configureServiceWorker(registration);
 
   const token = await getToken(messaging, {
@@ -120,4 +117,46 @@ export async function registerForNotifications(): Promise<string> {
   }
 
   return token;
+}
+
+// Check for service worker updates
+export async function checkForSWUpdate(): Promise<boolean> {
+  if (!("serviceWorker" in navigator)) return false;
+
+  const registration = await navigator.serviceWorker.ready;
+  await registration.update();
+
+  if (registration.waiting) {
+    return true;
+  }
+
+  // Use a simpler approach - wait for updatefound event
+  return new Promise<boolean>((resolve) => {
+    const handleUpdateFound = () => {
+      const newWorker = registration.installing;
+      if (newWorker) {
+        newWorker.addEventListener("statechange", () => {
+          if (newWorker.state === "installed" && navigator.serviceWorker.controller) {
+            resolve(true);
+          }
+        });
+      }
+    };
+
+    registration.addEventListener("updatefound", handleUpdateFound, { once: true });
+
+    // Timeout after 30 seconds
+    setTimeout(() => resolve(false), 30000);
+  });
+}
+
+// Apply service worker update
+export async function applySWUpdate(): Promise<void> {
+  if (!("serviceWorker" in navigator)) return;
+
+  const registration = await navigator.serviceWorker.ready;
+  if (registration.waiting) {
+    registration.waiting.postMessage({ type: "SKIP_WAITING" });
+    window.location.reload();
+  }
 }

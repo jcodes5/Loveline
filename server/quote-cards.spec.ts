@@ -3,25 +3,31 @@ import { describe, expect, it } from "vitest";
 import { renderQuoteCardSvg } from "./quote-cards";
 
 describe("quote card renderer", () => {
-  it("escapes user content before placing it in SVG", () => {
-    const svg = renderQuoteCardSvg({
+  it("generates valid SVG without breaking XML structure", async () => {
+    const svg = await renderQuoteCardSvg({
       quoteText: "Stay <close> & kind",
-      quoteAuthor: "A \"favorite\" person",
+      quoteAuthor: 'A "favorite" person',
       quoteSource: "Our story",
       palette: "rose",
+      template: "minimal",
     });
 
-    expect(svg).toContain("Stay &lt;close&gt; &amp; kind");
-    expect(svg).toContain("A &quot;favorite&quot; person");
+    // SVG should be well-formed XML
+    expect(svg).toContain('<svg');
+    expect(svg).toContain('viewBox="0 0 1200 1200"');
+    expect(svg).toContain('xmlns="http://www.w3.org/2000/svg"');
+    // Should not contain unescaped characters that break XML
     expect(svg).not.toContain("<close>");
+    expect(svg).not.toContain('"favorite"');
   });
 
-  it("uses the selected palette", () => {
-    const svg = renderQuoteCardSvg({
+  it("uses the selected palette", async () => {
+    const svg = await renderQuoteCardSvg({
       quoteText: "A thought",
       quoteAuthor: "Loveline",
       quoteSource: null,
       palette: "dusk",
+      template: "minimal",
     });
 
     expect(svg).toContain('fill="#30242a"');

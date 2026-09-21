@@ -2,6 +2,30 @@ import { describe, expect, it } from "vitest";
 
 import { buildTimelineItems } from "@/hooks/use-timeline";
 
+const baseDate = {
+  recurrence: "yearly" as const,
+  remindBeforeDays: 0,
+  message: "",
+  theme: "minimal" as const,
+  location: "",
+  memoryId: null,
+  enabled: true,
+  timezone: "UTC",
+};
+
+const baseMemory = {
+  format: "jpg",
+  width: 1200,
+  height: 900,
+  bytes: 1000,
+  caption: "A rainy afternoon",
+  takenAt: "2025-04-02",
+  createdAt: "2025-04-02T12:00:00.000Z",
+  albumId: null,
+  isFavorite: false,
+  thumbnailUrl: "",
+};
+
 describe("relationship timeline", () => {
   it("combines dates and memories in chronological order", () => {
     const items = buildTimelineItems(
@@ -14,6 +38,7 @@ describe("relationship timeline", () => {
           label: "A year of us",
           eventDate: "2025-06-14",
           notes: "",
+          ...baseDate,
         },
         {
           id: "date-1",
@@ -23,16 +48,14 @@ describe("relationship timeline", () => {
           label: "The day we met",
           eventDate: "2025-03-01",
           notes: "",
+          ...baseDate,
         },
       ],
       [
         {
           id: "memory-1",
           relationshipId: "relationship-1",
-          format: "jpg",
-          width: 1200,
-          height: 900,
-          bytes: 1000,
+          ...baseMemory,
           caption: "A rainy afternoon",
           takenAt: "2025-04-02",
           createdAt: "2025-04-02T12:00:00.000Z",
@@ -49,10 +72,10 @@ describe("relationship timeline", () => {
       {
         id: "memory-1",
         relationshipId: "relationship-1",
+        ...baseMemory,
         format: "png",
         width: 800,
         height: 800,
-        bytes: 1000,
         caption: "A quiet night",
         takenAt: null,
         createdAt: "2025-05-08T12:00:00.000Z",

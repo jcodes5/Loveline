@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ArrowRight, Bell, Bot, CalendarDays, Heart, MessageSquare, RefreshCw, Sparkles, TrendingUp } from "lucide-react";
+import { ArrowRight, Bell, Bot, CalendarDays, Heart, MessageSquare, RefreshCw, Sparkles, TrendingUp, HeartPulse } from "lucide-react";
 import { Link } from "react-router-dom";
 
 import { Button } from "@/components/ui/button";
@@ -241,6 +241,13 @@ export default function AdminDashboard() {
                   <div className="grid size-10 place-items-center rounded-xl bg-pink-100 text-pink-600 dark:bg-pink-900/30 dark:text-pink-400"><Heart className="size-5" aria-hidden="true" /></div>
                   <span className="font-semibold">Special Dates</span>
                   <span className="text-xs text-muted-foreground">Manage anniversaries & milestones</span>
+                </Link>
+              </Button>
+              <Button asChild variant="outline" className="h-14 rounded-xl flex flex-col items-start gap-2 p-4 border-border/50 hover:border-primary/30">
+                <Link to="/admin/mood-mappings">
+                  <div className="grid size-10 place-items-center rounded-xl bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400"><HeartPulse className="size-5" aria-hidden="true" /></div>
+                  <span className="font-semibold">Mood Mappings</span>
+                  <span className="text-xs text-muted-foreground">Configure mood responses</span>
                 </Link>
               </Button>
             </div>

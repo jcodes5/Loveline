@@ -4,8 +4,9 @@ import { calculateDaysTogether, mapSpecialDate } from "@/hooks/use-special-dates
 
 describe("special dates", () => {
   it("counts the starting day as day one", () => {
-    expect(calculateDaysTogether("2025-03-01", new Date(2025, 2, 1))).toBe(1);
-    expect(calculateDaysTogether("2025-03-01", new Date(2025, 2, 8))).toBe(8);
+    // Use UTC to match the original test expectations
+    expect(calculateDaysTogether("2025-03-01", new Date("2025-03-01T00:00:00Z"), "UTC")).toBe(1);
+    expect(calculateDaysTogether("2025-03-01", new Date("2025-03-08T00:00:00Z"), "UTC")).toBe(8);
   });
 
   it("does not count a future beginning as elapsed time", () => {
@@ -22,6 +23,14 @@ describe("special dates", () => {
         label: "The day we met",
         event_date: "2025-06-14",
         notes: "Rainy afternoon and two coffees.",
+        recurrence: "yearly",
+        remind_before_days: 1,
+        message: "Happy anniversary!",
+        theme: "romantic",
+        location: "Our favorite cafe",
+        memory_id: null,
+        enabled: true,
+        timezone: "UTC",
       }),
     ).toEqual({
       id: "date-1",
@@ -31,6 +40,14 @@ describe("special dates", () => {
       label: "The day we met",
       eventDate: "2025-06-14",
       notes: "Rainy afternoon and two coffees.",
+      recurrence: "yearly",
+      remindBeforeDays: 1,
+      message: "Happy anniversary!",
+      theme: "romantic",
+      location: "Our favorite cafe",
+      memoryId: null,
+      enabled: true,
+      timezone: "UTC",
     });
   });
 });

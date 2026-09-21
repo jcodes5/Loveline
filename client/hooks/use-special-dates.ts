@@ -5,6 +5,8 @@ import { useRelationship } from "@/contexts/RelationshipContext";
 import { supabase } from "@/lib/supabase";
 
 export type SpecialDateKind = "relationship_start" | "anniversary" | "birthday" | "custom";
+export type SpecialDateRecurrence = "none" | "yearly" | "monthly";
+export type SpecialDateTheme = "minimal" | "romantic" | "editorial" | "polaroid" | "night" | "sunrise" | "memory";
 
 export type SpecialDate = {
   id: string;
@@ -14,6 +16,14 @@ export type SpecialDate = {
   label: string;
   eventDate: string;
   notes: string;
+  recurrence: SpecialDateRecurrence;
+  remindBeforeDays: number;
+  message: string;
+  theme: SpecialDateTheme;
+  location: string;
+  memoryId: string | null;
+  enabled: boolean;
+  timezone: string;
 };
 
 type SpecialDateRow = {
@@ -24,6 +34,14 @@ type SpecialDateRow = {
   label: string;
   event_date: string;
   notes: string;
+  recurrence: SpecialDateRecurrence;
+  remind_before_days: number;
+  message: string;
+  theme: SpecialDateTheme;
+  location: string;
+  memory_id: string | null;
+  enabled: boolean;
+  timezone: string;
 };
 
 export type SpecialDateInput = {
@@ -32,9 +50,17 @@ export type SpecialDateInput = {
   label: string;
   eventDate: string;
   notes: string;
+  recurrence?: SpecialDateRecurrence;
+  remindBeforeDays?: number;
+  message?: string;
+  theme?: SpecialDateTheme;
+  location?: string;
+  memoryId?: string | null;
+  enabled?: boolean;
+  timezone?: string;
 };
 
-const dateSelect = "id, relationship_id, created_by, kind, label, event_date, notes";
+const dateSelect = "id, relationship_id, created_by, kind, label, event_date, notes, recurrence, remind_before_days, message, theme, location, memory_id, enabled, timezone";
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 function dateAtUtcMidnight(value: string) {
@@ -49,8 +75,10 @@ function localDateKey(date: Date) {
   return `${year}-${month}-${day}`;
 }
 
-export function calculateDaysTogether(startDate: string, today = new Date()) {
-  const elapsed = dateAtUtcMidnight(localDateKey(today)) - dateAtUtcMidnight(startDate);
+export function calculateDaysTogether(startDate: string, today = new Date(), timezone = "UTC") {
+  const todayLocal = new Date(today.toLocaleString("en-US", { timeZone: timezone }));
+  const todayKey = localDateKey(todayLocal);
+  const elapsed = dateAtUtcMidnight(todayKey) - dateAtUtcMidnight(startDate);
   return Math.max(0, Math.floor(elapsed / DAY_MS) + 1);
 }
 
@@ -63,6 +91,14 @@ export function mapSpecialDate(value: SpecialDateRow): SpecialDate {
     label: value.label,
     eventDate: value.event_date,
     notes: value.notes,
+    recurrence: value.recurrence ?? "yearly",
+    remindBeforeDays: value.remind_before_days ?? 0,
+    message: value.message ?? "",
+    theme: value.theme ?? "minimal",
+    location: value.location ?? "",
+    memoryId: value.memory_id ?? null,
+    enabled: value.enabled ?? true,
+    timezone: value.timezone ?? "UTC",
   };
 }
 
@@ -103,8 +139,9 @@ export function useSpecialDates() {
   }, [refresh]);
 
   const startDate = dates.find((date) => date.kind === "relationship_start")?.eventDate ?? relationship?.createdAt.slice(0, 10) ?? null;
+  const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
   const daysTogether = useMemo(
-    () => (startDate ? calculateDaysTogether(startDate) : null),
+    () => (startDate ? calculateDaysTogether(startDate, new Date(), userTimezone) : null),
     [startDate],
   );
 
@@ -123,6 +160,14 @@ export function useSpecialDates() {
         label: input.label,
         event_date: input.eventDate,
         notes: input.notes,
+        recurrence: input.recurrence ?? "yearly",
+        remind_before_days: input.remindBeforeDays ?? 0,
+        message: input.message ?? "",
+        theme: input.theme ?? "minimal",
+        location: input.location ?? "",
+        memory_id: input.memoryId ?? null,
+        enabled: input.enabled ?? true,
+        timezone: input.timezone ?? "UTC",
         updated_at: new Date().toISOString(),
       };
       const result = input.id

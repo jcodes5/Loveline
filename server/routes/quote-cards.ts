@@ -2,18 +2,20 @@ import { Router, type Request } from "express";
 import { z } from "zod";
 
 import { createClient } from "@supabase/supabase-js";
-import { renderQuoteCardSvg, type QuoteCardPalette } from "../quote-cards";
+import { renderQuoteCardSvg, type QuoteCardPalette, type QuoteCardTemplate } from "../quote-cards";
 
 const paletteSchema = z.enum(["rose", "dusk", "honey"]);
+const templateSchema = z.enum(["minimal", "romantic", "editorial", "polaroid", "night", "sunrise", "memory"]);
 const quoteCardSchema = z.object({
   relationshipId: z.string().uuid("A relationship is required."),
   quoteText: z.string().trim().min(1, "Write a quote for the card.").max(600, "Keep the quote under 600 characters."),
   quoteAuthor: z.string().trim().min(1, "Add the quote author.").max(160, "Keep the author under 160 characters."),
   quoteSource: z.string().trim().max(160, "Keep the source under 160 characters.").nullable(),
   palette: paletteSchema,
+  template: templateSchema.default("minimal"),
 });
 
-const quoteCardSelect = "id, relationship_id, quote_text, quote_author, quote_source, palette, created_at";
+const quoteCardSelect = "id, relationship_id, quote_text, quote_author, quote_source, palette, template, created_at";
 
 type QuoteCardRow = {
   id: string;
@@ -22,6 +24,7 @@ type QuoteCardRow = {
   quote_author: string;
   quote_source: string | null;
   palette: QuoteCardPalette;
+  template: QuoteCardTemplate;
   created_at: string;
 };
 
@@ -55,12 +58,14 @@ function mapQuoteCard(value: QuoteCardRow) {
     quoteAuthor: value.quote_author,
     quoteSource: value.quote_source,
     palette: value.palette,
+    template: value.template,
     createdAt: value.created_at,
     svg: renderQuoteCardSvg({
       quoteText: value.quote_text,
       quoteAuthor: value.quote_author,
       quoteSource: value.quote_source,
       palette: value.palette,
+      template: value.template,
     }),
   };
 }
@@ -125,6 +130,7 @@ export function createQuoteCardRouter() {
           quote_author: parsed.data.quoteAuthor,
           quote_source: parsed.data.quoteSource || null,
           palette: parsed.data.palette,
+          template: parsed.data.template,
         })
         .select(quoteCardSelect)
         .single();

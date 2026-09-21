@@ -2,17 +2,20 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta
-      name="description"
-      content="Loveline — a little place for love, every day."
-    />
+    <meta name="description" content="Loveline — a little place for love, every day." />
     <meta name="theme-color" content="#c85a78" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Loveline" />
     <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="icon" href="/icon-192.png" type="image/png" sizes="192x192" />
+    <link rel="icon" href="/icon-512.png" type="image/png" sizes="512x512" />
     <link rel="icon" href="/icon.svg" type="image/svg+xml" />
-    <link rel="apple-touch-icon" href="/icon.svg" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="mask-icon" href="/icon.svg" color="#c85a78" />
+    <meta name="msapplication-TileColor" content="#c85a78" />
+    <meta name="msapplication-TileImage" content="/icon-144.png" />
     <title>Loveline — A little place for love, every day.</title>
   </head>
 
@@ -20,5 +23,32 @@
     <div id="root"></div>
 
     <script type="module" src="/client/App.tsx"></script>
+    <script>
+      // Register service worker
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js').then(reg => {
+            console.log('Service Worker registered:', reg.scope);
+            
+            // Check for updates
+            reg.addEventListener('updatefound', () => {
+              const newWorker = reg.installing;
+              if (newWorker) {
+                newWorker.addEventListener('statechange', () => {
+                  if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                    // New version available - show update prompt
+                    if (confirm('A new version of Loveline is available. Reload to update?')) {
+                      window.location.reload();
+                    }
+                  }
+                });
+              }
+            });
+          }).catch(err => {
+            console.log('Service Worker registration failed:', err);
+          });
+        });
+      }
+    </script>
   </body>
 </html>

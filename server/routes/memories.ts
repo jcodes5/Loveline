@@ -8,9 +8,10 @@ const uploadSchema = z.object({
   dataUrl: z.string().regex(/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/, "Upload a JPG, PNG, or WebP image."),
   caption: z.string().trim().max(240, "Keep the caption under 240 characters."),
   takenAt: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Choose a valid date.").nullable(),
+  albumId: z.string().uuid().nullable().optional(),
 });
 
-const memorySelect = "id, relationship_id, public_id, format, width, height, bytes, caption, taken_at, created_at";
+const memorySelect = "id, relationship_id, public_id, format, width, height, bytes, caption, taken_at, created_at, album_id, is_favorite";
 
 type AuthenticatedRequest = Request & {
   authUserId?: string;
@@ -54,6 +55,21 @@ function signedImageUrl(publicId: string, format: string) {
   });
 }
 
+function thumbnailUrl(publicId: string, format: string) {
+  return configureCloudinary().url(publicId, {
+    resource_type: "image",
+    type: "authenticated",
+    secure: true,
+    sign_url: true,
+    format,
+    width: 400,
+    height: 300,
+    crop: "fill",
+    gravity: "auto",
+    quality: "auto",
+  });
+}
+
 async function authenticate(request: Request) {
   const supabase = getSupabaseForRequest(request);
   if (!supabase) {
@@ -75,6 +91,8 @@ function mapMemory(value: {
   caption: string;
   taken_at: string | null;
   created_at: string;
+  album_id: string | null;
+  is_favorite: boolean;
 }) {
   return {
     id: value.id,
@@ -86,7 +104,10 @@ function mapMemory(value: {
     caption: value.caption,
     takenAt: value.taken_at,
     createdAt: value.created_at,
+    albumId: value.album_id,
+    isFavorite: value.is_favorite,
     url: signedImageUrl(value.public_id, value.format),
+    thumbnailUrl: thumbnailUrl(value.public_id, value.format),
   };
 }
 
@@ -172,6 +193,7 @@ export function createMemoryRouter() {
           bytes: upload.bytes,
           caption: parsed.data.caption,
           taken_at: parsed.data.takenAt,
+          album_id: parsed.data.albumId ?? null,
         })
         .select(memorySelect)
         .single();

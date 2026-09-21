@@ -13,15 +13,21 @@ self.addEventListener("message", async (event) => {
   if (!messagingConfigured) {
     firebase.initializeApp(event.data.config);
     const messaging = firebase.messaging();
-    messaging.onBackgroundMessage(() => {
-      self.registration.showNotification("A little note from Loveline", {
-        body: "Your person left something for you.",
-        icon: "/icon.svg",
-        badge: "/icon.svg",
+    
+    messaging.onBackgroundMessage((payload) => {
+      const notificationTitle = payload.notification?.title || "A little note from Loveline";
+      const notificationOptions = {
+        body: payload.notification?.body || "Your person left something for you.",
+        icon: "/icon-192.png",
+        badge: "/icon-72.png",
         tag: "loveline-personal-message",
         data: { url: "/" },
-      });
+        requireInteraction: true,
+      };
+      
+      self.registration.showNotification(notificationTitle, notificationOptions);
     });
+    
     messagingConfigured = true;
   }
 
@@ -45,6 +51,11 @@ self.addEventListener("notificationclick", (event) => {
         return existingClient.focus();
       }
       return self.clients.openWindow(targetUrl);
-    }),
+    })
   );
+});
+
+self.addEventListener("notificationclose", (event) => {
+  // Track notification dismissal if needed
+  console.log("Notification closed:", event.notification.tag);
 });

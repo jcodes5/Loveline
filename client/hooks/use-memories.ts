@@ -13,7 +13,10 @@ export type Memory = {
   caption: string;
   takenAt: string | null;
   createdAt: string;
+  albumId: string | null;
+  isFavorite: boolean;
   url: string;
+  thumbnailUrl: string;
 };
 
 type MemoryResponse = { memories: Memory[] };
@@ -87,7 +90,7 @@ export function useMemories() {
   }, [refresh]);
 
   const addMemory = useCallback(
-    async (file: File, caption: string, takenAt: string | null) => {
+    async (file: File, caption: string, takenAt: string | null, albumId: string | null = null) => {
       if (!session?.access_token || !relationship) {
         return { error: new Error("Your Loveline connection is not ready yet.") };
       }
@@ -109,7 +112,7 @@ export function useMemories() {
           },
           body: JSON.stringify({
             relationshipId: relationship.id,
-            memory: { dataUrl, caption: caption.trim(), takenAt },
+            memory: { dataUrl, caption: caption.trim(), takenAt, albumId },
           }),
         });
 
@@ -157,5 +160,61 @@ export function useMemories() {
     [session?.access_token],
   );
 
-  return { memories, loading, saving, error, refresh, addMemory, removeMemory };
+  const toggleFavorite = useCallback(
+    async (id: string, isFavorite: boolean) => {
+      if (!session?.access_token) {
+        return { error: new Error("Your Loveline connection is not ready yet.") };
+      }
+
+      const response = await fetch(`/api/memories/${encodeURIComponent(id)}`, {
+        method: "PATCH",
+        headers: {
+          ...authHeaders(session.access_token),
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({ isFavorite: !isFavorite }),
+      });
+
+      if (!response.ok) {
+        return { error: new Error(await responseError(response, "We couldn't update that memory right now.")) };
+      }
+
+      const payload = (await response.json()) as SingleMemoryResponse;
+      setMemories((current) =>
+        current.map((memory) => (memory.id === id ? payload.memory : memory))
+      );
+      return { error: null };
+    },
+    [session?.access_token],
+  );
+
+  const updateAlbum = useCallback(
+    async (id: string, albumId: string | null) => {
+      if (!session?.access_token) {
+        return { error: new Error("Your Loveline connection is not ready yet.") };
+      }
+
+      const response = await fetch(`/api/memories/${encodeURIComponent(id)}`, {
+        method: "PATCH",
+        headers: {
+          ...authHeaders(session.access_token),
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({ albumId }),
+      });
+
+      if (!response.ok) {
+        return { error: new Error(await responseError(response, "We couldn't update that memory right now.")) };
+      }
+
+      const payload = (await response.json()) as SingleMemoryResponse;
+      setMemories((current) =>
+        current.map((memory) => (memory.id === id ? payload.memory : memory))
+      );
+      return { error: null };
+    },
+    [session?.access_token],
+  );
+
+  return { memories, loading, saving, error, refresh, addMemory, removeMemory, toggleFavorite, updateAlbum };
 }

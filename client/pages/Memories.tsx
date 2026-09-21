@@ -1,11 +1,12 @@
 import { useRef, useState } from "react";
-import { ArrowLeft, CalendarDays, ImagePlus, LoaderCircle, LockKeyhole, Trash2, Upload } from "lucide-react";
+import { ArrowLeft, CalendarDays, Heart, ImagePlus, LoaderCircle, LockKeyhole, Star, Trash2, Upload } from "lucide-react";
 import { Link } from "react-router-dom";
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRelationship } from "@/contexts/RelationshipContext";
@@ -24,7 +25,7 @@ function displayDate(value: string | null) {
 export default function Memories() {
   const { user } = useAuth();
   const { relationship } = useRelationship();
-  const { memories, loading, saving, error, refresh, addMemory, removeMemory } = useMemories();
+  const { memories, loading, saving, error, refresh, addMemory, removeMemory, toggleFavorite, updateAlbum } = useMemories();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<File | null>(null);
   const [caption, setCaption] = useState("");
@@ -32,6 +33,7 @@ export default function Memories() {
   const [formError, setFormError] = useState<string | null>(null);
   const [savedMessage, setSavedMessage] = useState<string | null>(null);
   const isOwner = Boolean(user && relationship?.ownerId === user.id);
+  const [filterAlbum, setFilterAlbum] = useState<string | "all" | "favorites">("all");
 
   async function handleUpload(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -164,25 +166,56 @@ export default function Memories() {
               <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary-dark">Your gallery</p>
               <h2 id="memory-grid-title" className="font-display mt-1 text-3xl font-semibold tracking-[-0.03em]">Little pieces of us.</h2>
             </div>
-            <span className="text-sm text-muted-foreground">{memories.length} {memories.length === 1 ? "memory" : "memories"}</span>
+            <div className="flex items-center gap-2">
+              <Select value={filterAlbum} onValueChange={(v) => setFilterAlbum(v as any)}>
+                <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All memories</SelectItem>
+                  <SelectItem value="favorites">Favorites only</SelectItem>
+                </SelectContent>
+              </Select>
+              <span className="text-sm text-muted-foreground">{memories.length} {memories.length === 1 ? "memory" : "memories"}</span>
+            </div>
           </div>
           <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {memories.map((memory) => (
-              <article key={memory.id} className="group overflow-hidden rounded-card border border-border bg-surface shadow-subtle">
-                <div className="relative aspect-[4/3] overflow-hidden bg-surface-muted">
-                  <img src={memory.url} alt={memory.caption || "A saved Loveline memory"} loading="lazy" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]" />
-                  {isOwner && (
-                    <Button variant="ghost" size="icon" className="absolute right-3 top-3 rounded-full bg-black/45 text-white hover:bg-destructive hover:text-white" aria-label="Remove memory" onClick={() => void handleRemove(memory.id)} disabled={saving}>
-                      <Trash2 className="size-4" aria-hidden="true" />
-                    </Button>
-                  )}
-                </div>
-                <div className="p-4">
-                  {memory.caption && <p className="text-sm leading-6 text-foreground">{memory.caption}</p>}
-                  {displayDate(memory.takenAt) && <p className="mt-2 text-xs text-muted-foreground">{displayDate(memory.takenAt)}</p>}
-                </div>
-              </article>
-            ))}
+            {memories
+              .filter((m) => filterAlbum === "all" || (filterAlbum === "favorites" ? m.isFavorite : m.albumId === filterAlbum))
+              .map((memory) => (
+                <article key={memory.id} className="group overflow-hidden rounded-card border border-border bg-surface shadow-subtle">
+                  <div className="relative aspect-[4/3] overflow-hidden bg-surface-muted">
+                    <img src={memory.thumbnailUrl || memory.url} alt={memory.caption || "A saved Loveline memory"} loading="lazy" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]" />
+                    {isOwner && (
+                      <div className="absolute top-3 right-3 flex flex-col gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className={`rounded-full ${memory.isFavorite ? "text-yellow-400" : "bg-black/45 text-white hover:bg-yellow-400 hover:text-black"}`}
+                          aria-label={memory.isFavorite ? "Remove from favorites" : "Add to favorites"}
+                          onClick={() => void toggleFavorite(memory.id, memory.isFavorite)}
+                          disabled={saving}
+                        >
+                          <Star className={`size-4 ${memory.isFavorite ? "fill-current" : ""}`} aria-hidden="true" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="rounded-full bg-black/45 text-white hover:bg-destructive hover:text-white"
+                          aria-label="Remove memory"
+                          onClick={() => void handleRemove(memory.id)}
+                          disabled={saving}
+                        >
+                          <Trash2 className="size-4" aria-hidden="true" />
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                  <div className="p-4">
+                    {memory.caption && <p className="text-sm leading-6 text-foreground">{memory.caption}</p>}
+                    {displayDate(memory.takenAt) && <p className="mt-2 text-xs text-muted-foreground">{displayDate(memory.takenAt)}</p>}
+                    {memory.albumId && <p className="mt-2 text-xs text-muted-foreground">Album</p>}
+                  </div>
+                </article>
+              ))}
           </div>
         </section>
       )}

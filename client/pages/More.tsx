@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ArrowLeft, CalendarHeart, Check, Heart, LoaderCircle, Pencil, Plus, Sparkles, Trash2 } from "lucide-react";
+import { ArrowLeft, CalendarHeart, Check, Clock3, Globe, Heart, LoaderCircle, MapPin, Pencil, Plus, Sparkles, Trash2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { z } from "zod";
 
@@ -7,16 +7,24 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRelationship } from "@/contexts/RelationshipContext";
-import { useSpecialDates, type SpecialDate, type SpecialDateKind } from "@/hooks/use-special-dates";
+import { useSpecialDates, type SpecialDate, type SpecialDateKind, type SpecialDateRecurrence, type SpecialDateTheme } from "@/hooks/use-special-dates";
 
 const dateSchema = z.object({
   kind: z.enum(["relationship_start", "anniversary", "birthday", "custom"]),
   label: z.string().trim().min(1, "Give this date a name.").max(120, "Keep the name under 120 characters."),
   eventDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Choose a valid date."),
   notes: z.string().trim().max(500, "Keep the note under 500 characters."),
+  recurrence: z.enum(["none", "yearly", "monthly"]),
+  remindBeforeDays: z.number().int().min(0).max(30),
+  message: z.string().max(2000).optional(),
+  theme: z.enum(["minimal", "romantic", "editorial", "polaroid", "night", "sunrise", "memory"]),
+  location: z.string().max(200).optional(),
+  enabled: z.boolean(),
+  timezone: z.string().optional(),
 });
 
 type FormState = {
@@ -25,6 +33,13 @@ type FormState = {
   label: string;
   eventDate: string;
   notes: string;
+  recurrence: SpecialDateRecurrence;
+  remindBeforeDays: number;
+  message: string;
+  theme: SpecialDateTheme;
+  location: string;
+  enabled: boolean;
+  timezone: string;
 };
 
 const blankForm: FormState = {
@@ -32,6 +47,13 @@ const blankForm: FormState = {
   label: "",
   eventDate: "",
   notes: "",
+  recurrence: "yearly",
+  remindBeforeDays: 0,
+  message: "",
+  theme: "minimal",
+  location: "",
+  enabled: true,
+  timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
 };
 
 const kindLabels: Record<SpecialDateKind, string> = {
@@ -39,6 +61,22 @@ const kindLabels: Record<SpecialDateKind, string> = {
   anniversary: "Anniversary",
   birthday: "Birthday",
   custom: "Something special",
+};
+
+const recurrenceLabels: Record<SpecialDateRecurrence, string> = {
+  none: "One time only",
+  yearly: "Every year",
+  monthly: "Every month",
+};
+
+const themeLabels: Record<SpecialDateTheme, string> = {
+  minimal: "Minimal",
+  romantic: "Romantic",
+  editorial: "Editorial",
+  polaroid: "Polaroid",
+  night: "Night",
+  sunrise: "Sunrise",
+  memory: "Memory",
 };
 
 function formatDate(value: string) {
@@ -61,7 +99,20 @@ export default function More() {
   }
 
   function editDate(date: SpecialDate) {
-    setForm({ id: date.id, kind: date.kind, label: date.label, eventDate: date.eventDate, notes: date.notes });
+    setForm({
+      id: date.id,
+      kind: date.kind,
+      label: date.label,
+      eventDate: date.eventDate,
+      notes: date.notes,
+      recurrence: date.recurrence,
+      remindBeforeDays: date.remindBeforeDays,
+      message: date.message,
+      theme: date.theme,
+      location: date.location,
+      enabled: date.enabled,
+      timezone: date.timezone,
+    });
     setFormError(null);
     setSavedMessage(null);
   }
@@ -152,8 +203,15 @@ export default function More() {
           <form className="mt-6 grid gap-5 sm:grid-cols-2" onSubmit={handleSubmit}>
             <div className="space-y-2"><Label htmlFor="special-date-kind">What kind of date?</Label><select id="special-date-kind" value={form.kind} onChange={(event) => setForm((current) => ({ ...current, kind: event.target.value as SpecialDateKind }))} className="flex h-11 w-full rounded-xl border border-input bg-background px-3 py-2 text-sm" disabled={saving}>{Object.entries(kindLabels).map(([value, label]) => <option value={value} key={value}>{label}</option>)}</select></div>
             <div className="space-y-2"><Label htmlFor="special-date-event">When?</Label><Input id="special-date-event" type="date" value={form.eventDate} onChange={(event) => setForm((current) => ({ ...current, eventDate: event.target.value }))} className="h-11 rounded-xl" disabled={saving} /></div>
-            <div className="space-y-2 sm:col-span-2"><Label htmlFor="special-date-label">Name this moment</Label><Input id="special-date-label" value={form.label} onChange={(event) => setForm((current) => ({ ...current, label: event.target.value }))} className="h-11 rounded-xl" placeholder="The day we met" maxLength={120} disabled={saving} /></div>
-            <div className="space-y-2 sm:col-span-2"><Label htmlFor="special-date-notes">A note <span className="font-normal text-muted-foreground">(optional)</span></Label><Textarea id="special-date-notes" value={form.notes} onChange={(event) => setForm((current) => ({ ...current, notes: event.target.value }))} className="min-h-20 rounded-xl leading-7" placeholder="The detail you never want to forget…" maxLength={500} disabled={saving} /></div>
+            <div className="space-y-2"><Label htmlFor="special-date-recurrence">Recurrence</Label><Select value={form.recurrence} onValueChange={(v) => setForm((c) => ({ ...c, recurrence: v as SpecialDateRecurrence }))} disabled={saving}><SelectTrigger id="special-date-recurrence"><SelectValue /></SelectTrigger><SelectContent>{Object.entries(recurrenceLabels).map(([v, l]) => <SelectItem key={v} value={v}>{l}</SelectItem>)}</SelectContent></Select></div>
+            <div className="space-y-2"><Label htmlFor="special-date-remind">Remind before (days)</Label><Input id="special-date-remind" type="number" min={0} max={30} value={form.remindBeforeDays} onChange={(e) => setForm((c) => ({ ...c, remindBeforeDays: Number(e.target.value) || 0 }))} className="h-11 rounded-xl" disabled={saving} /></div>
+            <div className="space-y-2 sm:col-span-2"><Label htmlFor="special-date-label">Name this moment</Label><Input id="special-date-label" value={form.label} onChange={(e) => setForm((c) => ({ ...c, label: e.target.value }))} className="h-11 rounded-xl" placeholder="The day we met" maxLength={120} disabled={saving} /></div>
+            <div className="space-y-2 sm:col-span-2"><Label htmlFor="special-date-message">Custom message <span className="font-normal text-muted-foreground">(optional)</span></Label><Textarea id="special-date-message" value={form.message} onChange={(e) => setForm((c) => ({ ...c, message: e.target.value }))} className="min-h-20 rounded-xl leading-7" placeholder="A special message for this day…" maxLength={2000} disabled={saving} /></div>
+            <div className="space-y-2"><Label htmlFor="special-date-theme">Theme</Label><Select value={form.theme} onValueChange={(v) => setForm((c) => ({ ...c, theme: v as SpecialDateTheme }))} disabled={saving}><SelectTrigger id="special-date-theme"><SelectValue /></SelectTrigger><SelectContent>{Object.entries(themeLabels).map(([v, l]) => <SelectItem key={v} value={v}>{l}</SelectItem>)}</SelectContent></Select></div>
+            <div className="space-y-2"><Label htmlFor="special-date-location">Location <span className="font-normal text-muted-foreground">(optional)</span></Label><div className="relative"><MapPin className="pointer-events-none absolute left-3 top-3 size-4 text-muted-foreground" aria-hidden="true" /><Input id="special-date-location" value={form.location} onChange={(e) => setForm((c) => ({ ...c, location: e.target.value }))} className="h-11 rounded-xl pl-10" placeholder="Where it happened…" maxLength={200} disabled={saving} /></div></div>
+            <div className="space-y-2"><Label htmlFor="special-date-enabled">Enabled</Label><Select value={form.enabled.toString()} onValueChange={(v) => setForm((c) => ({ ...c, enabled: v === "true" }))} disabled={saving}><SelectTrigger id="special-date-enabled"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="true">Yes</SelectItem><SelectItem value="false">No</SelectItem></SelectContent></Select></div>
+            <div className="space-y-2"><Label htmlFor="special-date-timezone">Timezone</Label><Select value={form.timezone} onValueChange={(v) => setForm((c) => ({ ...c, timezone: v }))} disabled={saving}><SelectTrigger id="special-date-timezone"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="UTC">UTC</SelectItem><SelectItem value="America/New_York">Eastern</SelectItem><SelectItem value="America/Chicago">Central</SelectItem><SelectItem value="America/Denver">Mountain</SelectItem><SelectItem value="America/Los_Angeles">Pacific</SelectItem><SelectItem value="Europe/London">London</SelectItem><SelectItem value="Europe/Paris">Paris</SelectItem><SelectItem value="Asia/Tokyo">Tokyo</SelectItem><SelectItem value="Australia/Sydney">Sydney</SelectItem></SelectContent></Select></div>
+            <div className="space-y-2 sm:col-span-2"><Label htmlFor="special-date-notes">A note <span className="font-normal text-muted-foreground">(optional)</span></Label><Textarea id="special-date-notes" value={form.notes} onChange={(e) => setForm((c) => ({ ...c, notes: e.target.value }))} className="min-h-20 rounded-xl leading-7" placeholder="The detail you never want to forget…" maxLength={500} disabled={saving} /></div>
             <div className="sm:col-span-2"><Button className="h-11 rounded-full" type="submit" disabled={saving}>{saving ? <LoaderCircle className="size-4 animate-spin" aria-hidden="true" /> : <CalendarHeart className="size-4" aria-hidden="true" />}{saving ? "Saving date…" : form.id ? "Save changes" : "Save date"}</Button></div>
           </form>
         </section>

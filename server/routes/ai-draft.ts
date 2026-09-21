@@ -91,6 +91,26 @@ export function createAIDraftRouter() {
       }
 
       if (type === "mood_suggestion") {
+        // Fetch mood mapping if relationshipId is provided
+        if (context.relationshipId) {
+          const { data: mapping } = await supabase
+            .from("mood_mappings")
+            .select("custom_message, ai_prompt, message_id, letter_id")
+            .eq("relationship_id", context.relationshipId)
+            .eq("mood", context.mood)
+            .eq("enabled", true)
+            .maybeSingle();
+          
+          if (mapping) {
+            effectiveContext = {
+              ...context,
+              relationshipName: context.relationshipName ?? "your Loveline",
+              customMessage: mapping.custom_message,
+              aiPrompt: mapping.ai_prompt,
+              hasMapping: true,
+            };
+          }
+        }
         effectiveContext = { ...context, relationshipName: context.relationshipName ?? "your Loveline" };
       }
 

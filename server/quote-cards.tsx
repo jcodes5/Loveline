@@ -1,6 +1,9 @@
-import { satori } from "satori";
+import satori, { type SatoriOptions } from "satori";
 import { Resvg } from "@resvg/resvg-js";
+import fs from "node:fs/promises";
+import path from "node:path";
 
+type SatoriFont = SatoriOptions["fonts"][number];
 export type QuoteCardPalette = "rose" | "dusk" | "honey";
 export type QuoteCardTemplate = "minimal" | "romantic" | "editorial" | "polaroid" | "night" | "sunrise" | "memory";
 
@@ -38,7 +41,7 @@ function escapeXml(value: string): string {
     .replace(/&/g, "&")
     .replace(/</g, "<")
     .replace(/>/g, ">")
-    .replace(/"/g, """)
+    .replace(/"/g, "&quot;")
     .replace(/'/g, "&apos;");
 }
 
@@ -68,7 +71,7 @@ interface LayoutConfig {
   decorative?: JSX.Element[];
 }
 
-function getLayout(template: QuoteCardTemplate, colors: ReturnType<typeof palettes[keyof typeof palettes]>, quoteLines: string[]): LayoutConfig {
+function getLayout(template: QuoteCardTemplate, colors: typeof palettes[keyof typeof palettes], quoteLines: string[]): LayoutConfig {
   const isDark = ["dusk", "night"].includes(template);
 
   switch (template) {
@@ -86,13 +89,11 @@ function getLayout(template: QuoteCardTemplate, colors: ReturnType<typeof palett
         author: { x: 120, y: 0, fontSize: 30, fontWeight: 500, color: colors.accent },
         source: { x: 120, y: 0, fontSize: 22, fontWeight: 400, color: colors.foreground, opacity: 0.7 },
         brand: { x: 120, y: 1080, fontSize: 18, fontWeight: 600, color: colors.accent, letterSpacing: 2 },
-        decorative: (
-          <>
-            <circle cx={1080} cy={120} r={180} fill={colors.soft} opacity={0.4} />
-            <circle cx={80} cy={1080} r={220} fill={colors.soft} opacity={0.3} />
-            <path d="M40 1160 C 200 900, 400 1100, 600 950" fill="none" stroke={colors.accent} strokeWidth={24} opacity={0.12} />
-          </>
-        ),
+        decorative: [
+          <circle key="1" cx={1080} cy={120} r={180} fill={colors.soft} opacity={0.4} />,
+          <circle key="2" cx={80} cy={1080} r={220} fill={colors.soft} opacity={0.3} />,
+          <path key="3" d="M40 1160 C 200 900, 400 1100, 600 950" fill="none" stroke={colors.accent} strokeWidth={24} opacity={0.12} />
+        ],
       };
 
     case "editorial":
@@ -101,12 +102,10 @@ function getLayout(template: QuoteCardTemplate, colors: ReturnType<typeof palett
         author: { x: 100, y: 0, fontSize: 26, fontWeight: 600, color: colors.foreground },
         source: { x: 100, y: 0, fontSize: 20, fontWeight: 400, color: colors.foreground, opacity: 0.55 },
         brand: { x: 100, y: 1120, fontSize: 16, fontWeight: 700, color: colors.accent, letterSpacing: 4 },
-        decorative: (
-          <>
-            <line x1={100} y1={160} x2={300} y2={160} stroke={colors.accent} strokeWidth={3} />
-            <line x1={100} y1={1080} x2={1100} y2={1080} stroke={colors.foreground} strokeWidth={1} opacity={0.1} />
-          </>
-        ),
+        decorative: [
+          <line key="1" x1={100} y1={160} x2={300} y2={160} stroke={colors.accent} strokeWidth={3} />,
+          <line key="2" x1={100} y1={1080} x2={1100} y2={1080} stroke={colors.foreground} strokeWidth={1} opacity={0.1} />
+        ],
       };
 
     case "polaroid":
@@ -115,12 +114,10 @@ function getLayout(template: QuoteCardTemplate, colors: ReturnType<typeof palett
         author: { x: 80, y: 0, fontSize: 24, fontWeight: 600, color: colors.foreground },
         source: { x: 80, y: 0, fontSize: 18, fontWeight: 400, color: colors.foreground, opacity: 0.6 },
         brand: { x: 80, y: 1140, fontSize: 14, fontWeight: 600, color: colors.accent, letterSpacing: 2 },
-        decorative: (
-          <>
-            <rect x={60} y={60} width={1080} height={1080} rx={12} fill="#ffffff" stroke="#e5e5e5" strokeWidth={2} />
-            <rect x={60} y={60} width={1080} height={720} fill="#f5f5f5" />
-          </>
-        ),
+        decorative: [
+          <rect key="1" x={60} y={60} width={1080} height={1080} rx={12} fill="#ffffff" stroke="#e5e5e5" strokeWidth={2} />,
+          <rect key="2" x={60} y={60} width={1080} height={720} fill="#f5f5f5" />
+        ],
       };
 
     case "night":
@@ -129,15 +126,13 @@ function getLayout(template: QuoteCardTemplate, colors: ReturnType<typeof palett
         author: { x: 100, y: 0, fontSize: 28, fontWeight: 500, color: "#e2e8f0" },
         source: { x: 100, y: 0, fontSize: 22, fontWeight: 400, color: "#94a3b8", opacity: 0.8 },
         brand: { x: 100, y: 1100, fontSize: 18, fontWeight: 600, color: "#fbbf24", letterSpacing: 2 },
-        decorative: (
-          <>
-            <circle cx={1100} cy={100} r={4} fill="#fbbf24" opacity={0.9} />
-            <circle cx={200} cy={200} r={2} fill="#fbbf24" opacity={0.6} />
-            <circle cx={900} cy={150} r={3} fill="#fbbf24" opacity={0.7} />
-            <circle cx={100} cy={900} r={1.5} fill="#fbbf24" opacity={0.5} />
-            <circle cx={800} cy={1050} r={2.5} fill="#fbbf24" opacity={0.6} />
-          </>
-        ),
+        decorative: [
+          <circle key="1" cx={1100} cy={100} r={4} fill="#fbbf24" opacity={0.9} />,
+          <circle key="2" cx={200} cy={200} r={2} fill="#fbbf24" opacity={0.6} />,
+          <circle key="3" cx={900} cy={150} r={3} fill="#fbbf24" opacity={0.7} />,
+          <circle key="4" cx={100} cy={900} r={1.5} fill="#fbbf24" opacity={0.5} />,
+          <circle key="5" cx={800} cy={1050} r={2.5} fill="#fbbf24" opacity={0.6} />
+        ],
       };
 
     case "sunrise":
@@ -146,12 +141,10 @@ function getLayout(template: QuoteCardTemplate, colors: ReturnType<typeof palett
         author: { x: 100, y: 0, fontSize: 28, fontWeight: 600, color: "#9a3412" },
         source: { x: 100, y: 0, fontSize: 22, fontWeight: 400, color: "#b45309", opacity: 0.7 },
         brand: { x: 100, y: 1110, fontSize: 20, fontWeight: 700, color: "#f59e0b", letterSpacing: 3 },
-        decorative: (
-          <>
-            <ellipse cx={600} cy={1200} rx={800} ry={200} fill="#fef3c7" opacity={0.5} />
-            <ellipse cx={600} cy={1250} rx={600} ry={150} fill="#fde68a" opacity={0.3} />
-          </>
-        ),
+        decorative: [
+          <ellipse key="1" cx={600} cy={1200} rx={800} ry={200} fill="#fef3c7" opacity={0.5} />,
+          <ellipse key="2" cx={600} cy={1250} rx={600} ry={150} fill="#fde68a" opacity={0.3} />
+        ],
       };
 
     case "memory":
@@ -160,19 +153,80 @@ function getLayout(template: QuoteCardTemplate, colors: ReturnType<typeof palett
         author: { x: 100, y: 0, fontSize: 26, fontWeight: 600, color: "#a16207" },
         source: { x: 100, y: 0, fontSize: 20, fontWeight: 400, color: "#854d0e", opacity: 0.65 },
         brand: { x: 100, y: 1100, fontSize: 18, fontWeight: 600, color: "#f59e0b", letterSpacing: 2 },
-        decorative: (
-          <>
-            <rect x={40} y={40} width={1120} height={1120} rx={24} fill="none" stroke="#fde68a" strokeWidth={4} opacity={0.5} />
-            <circle cx={1100} cy={100} r={60} fill="#fef3c7" opacity={0.5} />
-            <circle cx={100} cy={1100} r={80} fill="#fde68a" opacity={0.3} />
-          </>
-        ),
+        decorative: [
+          <rect key="1" x={40} y={40} width={1120} height={1120} rx={24} fill="none" stroke="#fde68a" strokeWidth={4} opacity={0.5} />,
+          <circle key="2" cx={1100} cy={100} r={60} fill="#fef3c7" opacity={0.5} />,
+          <circle key="3" cx={100} cy={1100} r={80} fill="#fde68a" opacity={0.3} />
+        ],
       };
 
     default:
       return getLayout("minimal", colors, quoteLines);
   }
 }
+
+// Load fonts at module init (synchronously)
+
+let fontData: SatoriFont[] = [];
+
+async function loadFonts(): Promise<SatoriFont[]> {
+  if (fontData.length > 0) return fontData;
+  // Try multiple paths to find fonts (works in both production and test environments)
+  const possibleDirs = [
+    path.resolve(path.dirname(new URL(import.meta.url).pathname), "../fonts"),
+    path.resolve(process.cwd(), "server/fonts"),
+    path.resolve(process.cwd(), "fonts"),
+  ];
+
+  for (const fontDir of possibleDirs) {
+    const fontFiles: Array<{
+      name: string;
+      file: string;
+      weight: SatoriFont["weight"];
+      style: SatoriFont["style"];
+    }> = [
+      { name: "Inter", file: "Inter-Regular.ttf", weight: 400, style: "normal" },
+      { name: "Inter", file: "Inter-Bold.ttf", weight: 700, style: "normal" },
+      { name: "Playfair Display", file: "PlayfairDisplay-Regular.ttf", weight: 400, style: "normal" },
+      { name: "Playfair Display", file: "PlayfairDisplay-Bold.ttf", weight: 700, style: "normal" },
+    ];
+
+    let foundAll = true;
+    for (const f of fontFiles) {
+      try {
+        const fontPath = path.join(fontDir, f.file);
+        const data = await fs.readFile(fontPath);
+        // Validate it's a valid TTF file (starts with 0x00010000 or 'true' or 'OTTO')
+        const header = data.subarray(0, 4);
+        const isValidTTF = header[0] === 0x00 && header[1] === 0x01 && header[2] === 0x00 && header[3] === 0x00;
+        const isValidOTF = header[0] === 0x4F && header[1] === 0x54 && header[2] === 0x54 && header[3] === 0x4F; // 'OTTO'
+        if (!isValidTTF && !isValidOTF) {
+          console.warn(`Font ${f.file} appears invalid (header: ${Buffer.from(header).toString('hex')}), skipping`);
+          foundAll = false;
+          break;
+        }
+        const fontBuffer = new Uint8Array(data).buffer;
+        fontData.push({
+          name: f.name,
+          data: fontBuffer,
+          weight: f.weight,
+          style: f.style,
+        });
+      } catch {
+        foundAll = false;
+        break;
+      }
+    }
+    if (foundAll && fontData.length >= 4) break;
+  }
+
+  return fontData;
+
+  return fontData;
+}
+
+// Initialize fonts at startup
+loadFonts().catch(() => {});
 
 export async function renderQuoteCardSvg(input: QuoteCardRenderInput): Promise<string> {
   const colors = palettes[input.palette];
@@ -190,21 +244,20 @@ export async function renderQuoteCardSvg(input: QuoteCardRenderInput): Promise<s
   const sourceY = authorY + (layout.source ? 44 : 0);
   const brandY = layout.brand.y;
 
-  const fonts = [
-    { name: "Inter", data: await fetch("https://fonts.gstatic.com/s/inter/v19/UcCO3FwrK3iLTeHuS_fvQtMwCp50KnMw2boKoduKmMEVuLyfAZ9hiJ-Ek-_EeA.woff2").then(r => r.arrayBuffer()), weight: 400, style: "normal" },
-    { name: "Inter", data: await fetch("https://fonts.gstatic.com/s/inter/v19/UcCO3FwrK3iLTeHuS_fvQtMwCp50KnMw2boKoduKmMEVuGKYAZ9hiJ-Ek-_EeA.woff2").then(r => r.arrayBuffer()), weight: 700, style: "normal" },
-    { name: "Playfair Display", data: await fetch("https://fonts.gstatic.com/s/playfairdisplay/v30/nuFvD-vYSZviVYUb_rj3ij__anPXJzDwcbmjWBN2PKdFvXDXbtXK-Fc.woff2").then(r => r.arrayBuffer()), weight: 400, style: "normal" },
-    { name: "Playfair Display", data: await fetch("https://fonts.gstatic.com/s/playfairdisplay/v30/nuFvD-vYSZviVYUb_rj3ij__anPXJzDwcbmjWBN2PKdFvXDXbtXK-Fc.woff2").then(r => r.arrayBuffer()), weight: 700, style: "italic" },
-  ];
+  // Ensure fonts are loaded
+  const fonts = await loadFonts();
+  const hasFonts = fonts.length > 0;
 
   const svg = await satori(
     <div style={{
       width: 1200,
       height: 1200,
       background: bg,
-      fontFamily: "Inter, Playfair Display, serif",
+      fontFamily: "Inter, Playfair Display, Georgia, serif",
       color: colors.foreground,
       position: "relative",
+      display: "flex",
+      flexDirection: "column",
     }}>
       {layout.decorative}
       <text
@@ -257,7 +310,7 @@ export async function renderQuoteCardSvg(input: QuoteCardRenderInput): Promise<s
     {
       width: 1200,
       height: 1200,
-      fonts,
+      fonts: fonts.length > 0 ? fonts : undefined,
     }
   );
 

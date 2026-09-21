@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ArrowLeft, Check, Heart, LoaderCircle, MailOpen, Pencil, Plus, RefreshCw, Sparkles, Trash2 } from "lucide-react";
+import { ArrowLeft, CalendarClock, Check, Clock3, Eye, EyeOff, Heart, LoaderCircle, Lock, MailOpen, Pencil, Plus, RefreshCw, Sparkles, Trash2, Unlock } from "lucide-react";
 import { Link } from "react-router-dom";
 import { z } from "zod";
 
@@ -7,28 +7,61 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRelationship } from "@/contexts/RelationshipContext";
-import { useOpenWhen, type OpenWhenLetter } from "@/hooks/use-open-when";
+import { useOpenWhen, type OpenWhenLetter, occasionOptions, getOccasionLabel, getUnlockRuleLabel } from "@/hooks/use-open-when";
 
 const letterSchema = z.object({
   occasion: z.string().trim().min(1, "Add the moment this letter is for.").max(80, "Keep the moment under 80 characters."),
+  occasionType: z.enum(["miss_me", "bad_day", "feeling_down", "something_good", "cant_sleep", "need_love", "need_laugh", "need_encouragement", "custom"]),
   title: z.string().trim().min(1, "Add a title for the letter.").max(120, "Keep the title under 120 characters."),
   body: z.string().trim().min(1, "Write something for this moment.").max(4000, "Keep the letter under 4,000 characters."),
+  unlockRule: z.enum(["immediate", "date", "date_time", "manual"]),
+  unlockAt: z.string().nullable().optional(),
+  isLocked: z.boolean().optional(),
 });
 
 type FormState = {
   id?: string;
   occasion: string;
+  occasionType: "miss_me" | "bad_day" | "feeling_down" | "something_good" | "cant_sleep" | "need_love" | "need_laugh" | "need_encouragement" | "custom";
   title: string;
   body: string;
+  unlockRule: "immediate" | "date" | "date_time" | "manual";
+  unlockAt: string;
+  isLocked: boolean;
 };
 
 const blankForm: FormState = {
   occasion: "",
+  occasionType: "custom",
   title: "",
   body: "",
+  unlockRule: "immediate",
+  unlockAt: "",
+  isLocked: false,
+};
+
+const unlockRuleLabels: Record<string, string> = {
+  immediate: "Unlock immediately",
+  date: "Unlock on a date",
+  date_time: "Unlock at date & time",
+  manual: "Unlock manually",
+};
+
+const occasionLabels: Record<string, string> = {
+  miss_me: "Miss me",
+  bad_day: "Bad day",
+  feeling_down: "Feeling down",
+  something_good: "Something good happened",
+  cant_sleep: "Can't sleep",
+  need_love: "Need to feel loved",
+  need_laugh: "Need a laugh",
+  need_encouragement: "Need encouragement",
+  custom: "Custom",
 };
 
 export default function Discover() {
@@ -48,7 +81,16 @@ export default function Discover() {
   }
 
   function editLetter(letter: OpenWhenLetter) {
-    setForm({ id: letter.id, occasion: letter.occasion, title: letter.title, body: letter.body });
+    setForm({
+      id: letter.id,
+      occasion: letter.occasion,
+      occasionType: letter.occasionType,
+      title: letter.title,
+      body: letter.body,
+      unlockRule: letter.unlockRule,
+      unlockAt: letter.unlockAt ?? "",
+      isLocked: letter.isLocked,
+    } as FormState);
     setFormError(null);
     setSavedMessage(null);
   }
@@ -69,7 +111,7 @@ export default function Discover() {
       return;
     }
     setSavedMessage("Your letter is waiting for the right moment.");
-    if (response.letter) setForm({ id: response.letter.id, ...response.letter });
+    if (response.letter) setForm({ id: response.letter.id, ...response.letter } as FormState);
   }
 
   async function handleRemove(letter: OpenWhenLetter) {
@@ -119,8 +161,20 @@ export default function Discover() {
 
           <form className="mt-6 grid gap-5 lg:grid-cols-2" onSubmit={handleSubmit}>
             <div className="space-y-2">
-              <Label htmlFor="open-when-occasion">Open when…</Label>
-              <Input id="open-when-occasion" value={form.occasion} onChange={(event) => setForm((current) => ({ ...current, occasion: event.target.value }))} className="h-11 rounded-xl" placeholder="you need a little courage" maxLength={80} disabled={saving} />
+              <Label htmlFor="open-when-occasion-type">Open when…</Label>
+              <Select value={form.occasionType} onValueChange={(v) => setForm((current) => ({ ...current, occasionType: v as FormState["occasionType"] }))} disabled={saving}>
+                <SelectTrigger id="open-when-occasion-type"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {occasionOptions.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="open-when-occasion">Custom occasion</Label>
+              <Input id="open-when-occasion" value={form.occasion} onChange={(event) => setForm((current) => ({ ...current, occasion: event.target.value }))} className="h-11 rounded-xl" placeholder="e.g., you miss me" maxLength={80} disabled={saving} />
+              <p className="text-xs text-muted-foreground">Custom label for the occasion (optional)</p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="open-when-title">Letter title</Label>
@@ -130,6 +184,35 @@ export default function Discover() {
               <Label htmlFor="open-when-body">Your letter</Label>
               <Textarea id="open-when-body" value={form.body} onChange={(event) => setForm((current) => ({ ...current, body: event.target.value }))} className="min-h-36 rounded-xl leading-7" placeholder="Write as if you were sitting beside them…" maxLength={4000} disabled={saving} />
               <p className="text-xs text-muted-foreground">Personal beats perfect.</p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="open-when-unlock-rule">Unlock rule</Label>
+              <Select value={form.unlockRule} onValueChange={(v) => setForm((current) => ({ ...current, unlockRule: v as FormState["unlockRule"] }))} disabled={saving}>
+                <SelectTrigger id="open-when-unlock-rule"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="immediate">Unlock immediately</SelectItem>
+                  <SelectItem value="date">Unlock on a date</SelectItem>
+                  <SelectItem value="date_time">Unlock at date & time</SelectItem>
+                  <SelectItem value="manual">Unlock manually</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="open-when-unlock-at">Unlock at</Label>
+              <Input
+                id="open-when-unlock-at"
+                type={form.unlockRule === "date_time" ? "datetime-local" : "date"}
+                value={form.unlockAt}
+                onChange={(event) => setForm((current) => ({ ...current, unlockAt: event.target.value }))}
+                className="h-11 rounded-xl"
+                disabled={saving || form.unlockRule === "immediate" || form.unlockRule === "manual"}
+              />
+              {form.unlockRule === "date" && <p className="text-xs text-muted-foreground">Letter unlocks at start of this date (recipient's timezone)</p>}
+              {form.unlockRule === "date_time" && <p className="text-xs text-muted-foreground">Letter unlocks at exact date & time (recipient's timezone)</p>}
+            </div>
+            <div className="flex items-center gap-2">
+              <Switch id="open-when-locked" checked={form.isLocked} onCheckedChange={(v) => setForm((current) => ({ ...current, isLocked: v }))} disabled={saving || form.unlockRule === "immediate"} aria-label="Lock letter" />
+              <Label htmlFor="open-when-locked" className="text-sm font-medium">Lock letter until unlock time</Label>
             </div>
             <div className="lg:col-span-2">
               <Button className="h-11 rounded-full px-5" type="submit" disabled={saving}>{saving ? <LoaderCircle className="size-4 animate-spin" aria-hidden="true" /> : <Sparkles className="size-4" aria-hidden="true" />}{saving ? "Saving letter…" : form.id ? "Save changes" : "Save letter"}</Button>
@@ -167,11 +250,19 @@ export default function Discover() {
           <div className="mt-5 grid gap-4 md:grid-cols-2">
             {letters.map((letter) => {
               const open = openLetterId === letter.id;
+              const isLocked = letter.isLocked && letter.unlockRule !== "immediate";
+              const isUnlocked = !letter.isLocked || letter.unlockRule === "immediate";
               return (
                 <article key={letter.id} className={`rounded-card border bg-surface p-5 shadow-subtle transition sm:p-6 ${open ? "border-primary/30 shadow-card" : "border-border"}`}>
                   <div className="flex items-start justify-between gap-4">
                     <div>
-                      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary-dark">Open when {letter.occasion}</p>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-semibold uppercase tracking-[0.16em] text-primary-dark">
+                          {letter.occasionType !== "custom" ? getOccasionLabel(letter.occasionType) : letter.occasion}
+                        </span>
+                        {isLocked && <Lock className="size-3.5 text-muted-foreground" aria-label="Locked" />}
+                        {isUnlocked && letter.unlockRule !== "immediate" && <Unlock className="size-3.5 text-primary" aria-label="Unlocked" />}
+                      </div>
                       <h3 className="font-display mt-3 text-2xl font-semibold leading-tight tracking-[-0.03em]">{letter.title}</h3>
                     </div>
                     <div className="grid size-10 shrink-0 place-items-center rounded-2xl bg-primary-soft text-primary-dark"><Heart className="size-4 fill-current" aria-hidden="true" /></div>
