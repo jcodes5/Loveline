@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { lazy, Suspense, useEffect, useState } from "react";
 import { createRoot, type Root } from "react-dom/client";
+import { ThemeProvider } from "next-themes";
 import "@/global.css";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 
@@ -15,7 +16,8 @@ import { RelationshipProvider } from "@/contexts/RelationshipContext";
 import { registerServiceWorker } from "@/lib/register-service-worker";
 import { listenForForegroundNotifications, checkForSWUpdate, applySWUpdate } from "@/lib/firebase-messaging";
 import { toast } from "sonner";
-import Auth from "@/pages/Auth";
+const Auth = lazy(() => import("@/pages/Auth"));
+const AcceptInvite = lazy(() => import("@/pages/AcceptInvite"));
 const AdminDashboard = lazy(() => import("@/pages/AdminDashboard"));
 const AIWorkspace = lazy(() => import("@/pages/AIWorkspace"));
 const Create = lazy(() => import("@/pages/Create"));
@@ -23,6 +25,7 @@ const DailyContentWorkspace = lazy(() => import("@/pages/DailyContentWorkspace")
 const Discover = lazy(() => import("@/pages/Discover"));
 const Index = lazy(() => import("@/pages/Index"));
 const Memories = lazy(() => import("@/pages/Memories"));
+const Messages = lazy(() => import("@/pages/Messages"));
 const MessageWorkspace = lazy(() => import("@/pages/MessageWorkspace"));
 const MoodHistory = lazy(() => import("@/pages/MoodHistory"));
 const MoodMappingsAdmin = lazy(() => import("@/pages/MoodMappingsAdmin"));
@@ -90,8 +93,9 @@ function SWUpdatePrompt() {
 registerServiceWorker();
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
+  <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
       <Toaster />
       <Sonner />
       <AuthProvider>
@@ -103,6 +107,7 @@ const App = () => (
               <Routes>
               <Route path="/auth" element={<Auth />} />
               <Route element={<AuthBoundary />}>
+                <Route path="/invite/:token" element={<AcceptInvite />} />
                 <Route path="/setup" element={<RelationshipSetup />} />
                 <Route element={<RelationshipBoundary />}>
                   <Route element={<AppShell />}>
@@ -116,6 +121,7 @@ const App = () => (
                     <Route path="/" element={<Index />} />
                     <Route path="/discover" element={<Discover />} />
                     <Route path="/memories" element={<Memories />} />
+                    <Route path="/messages" element={<Messages />} />
                     <Route path="/create" element={<Create />} />
                     <Route path="/settings/notifications" element={<NotificationPreferences />} />
                     <Route path="/more" element={<More />} />
@@ -131,7 +137,8 @@ const App = () => (
         </RelationshipProvider>
       </AuthProvider>
     </TooltipProvider>
-  </QueryClientProvider>
+    </QueryClientProvider>
+  </ThemeProvider>
 );
 
 export default App;

@@ -19,7 +19,7 @@ function ensureInitialized() {
   ];
 
   model = genAI.getGenerativeModel({
-    model: "gemini-1.5-flash",
+    model: "gemini-3.6-flash",
     safetySettings,
     generationConfig: {
       temperature: 0.7,
@@ -30,7 +30,7 @@ function ensureInitialized() {
   });
 }
 
-export type AIDraftType = "daily_affirmation" | "morning_message" | "night_message" | "quote_card" | "mood_suggestion" | "batch_daily";
+export type AIDraftType = "daily_affirmation" | "morning_message" | "night_message" | "quote_card" | "mood_suggestion" | "batch_daily" | "poetry";
 
 export interface AIDraftInput {
   type: AIDraftType;
@@ -144,6 +144,24 @@ Requirements:
 - Validating, not fixing or advising
 - Gentle companion energy
 - Return JSON only: { "message": "..." }`;
+  },
+
+  poetry: (ctx) => {
+    const { theme, tone = "tender and specific", style = "free verse" } = ctx as {
+      theme?: string;
+      tone?: string;
+      style?: string;
+    };
+    return `Write a short original poem for a private relationship app called Loveline.
+
+Theme: "${theme || "love, presence, small shared moments"}"
+Tone: ${tone}
+Style: ${style} (2-4 short stanzas, line breaks preserved)
+
+Requirements:
+- Original, intimate, specific — avoid clichés and greeting-card language
+- Max 500 chars total
+- Return JSON only: { "poem": "...", "title": "..." }`;
   },
 
   batch_daily: (ctx) => {

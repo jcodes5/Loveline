@@ -43,3 +43,5 @@ create policy "Owners can delete quote cards"
   on public.quote_cards for delete
   to authenticated
   using (public.is_relationship_owner(relationship_id));
+
+grant select, insert, update, delete on public.quote_cards to authenticated;

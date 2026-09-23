@@ -41,3 +41,5 @@ create policy "Owners can delete Open When letters"
   on public.open_when_letters for delete
   to authenticated
   using (public.is_relationship_owner(relationship_id));
+
+grant select, insert, update, delete on public.open_when_letters to authenticated;

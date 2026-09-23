@@ -14,6 +14,16 @@ const APP_SHELL = [
   "/apple-touch-icon.png",
 ];
 
+// Load the Firebase messaging worker so this service worker can configure
+// FCM on demand and show background notifications.
+importScripts(
+  "https://www.gstatic.com/firebasejs/12.19.0/firebase-app-compat.js",
+  "https://www.gstatic.com/firebasejs/12.19.0/firebase-messaging-compat.js",
+);
+
+let firebaseApp = null;
+let messagingConfigured = false;
+
 // Install - cache app shell
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -126,6 +136,62 @@ self.addEventListener("message", (event) => {
   if (event.data?.type === "SKIP_WAITING") {
     self.skipWaiting();
   }
+
+  if (event.data?.type === "loveline-configure-fcm") {
+    configureFcm(event);
+  }
+});
+
+function configureFcm(event) {
+  try {
+    if (!firebaseApp) {
+      firebaseApp = firebase.initializeApp(event.data.config);
+    }
+
+    if (!messagingConfigured) {
+      messagingConfigured = true;
+      const messaging = firebase.messaging(firebaseApp);
+      messaging.onBackgroundMessage((payload) => {
+        const notificationTitle = payload.notification?.title || "A little note from Loveline";
+        const notificationOptions = {
+          body: payload.notification?.body || "Your person left something for you.",
+          icon: "/icon-192.png",
+          badge: "/icon-72.png",
+          tag: "loveline-personal-message",
+          data: { url: "/" },
+          requireInteraction: true,
+        };
+
+        self.registration.showNotification(notificationTitle, notificationOptions);
+      });
+    }
+
+    if (event.source) {
+      event.source.postMessage({ type: "loveline-fcm-configured" });
+    } else {
+      self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clients) => {
+        clients.forEach((client) => client.postMessage({ type: "loveline-fcm-configured" }));
+      });
+    }
+  } catch (error) {
+    console.error("FCM configuration failed:", error);
+  }
+}
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const targetUrl = event.notification.data?.url ?? "/";
+
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clients) => {
+      const existingClient = clients.find((client) => "focus" in client);
+      if (existingClient) {
+        existingClient.navigate(targetUrl);
+        return existingClient.focus();
+      }
+      return self.clients.openWindow(targetUrl);
+    })
+  );
 });
 
 // Background sync for offline actions (if supported)

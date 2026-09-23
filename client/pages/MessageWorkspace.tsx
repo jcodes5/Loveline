@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, CalendarClock, Check, FileText, MailPlus, Plus, Send, Sparkles } from "lucide-react";
+import { ArrowLeft, CalendarClock, Check, FileText, MailPlus, Plus, Send, Sparkles, Sun, Moon, Heart, Trophy, Smile, Dice1 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { z } from "zod";
 
@@ -8,29 +8,37 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { usePersonalMessages, type PersonalMessage, type PersonalMessageStatus } from "@/hooks/use-personal-messages";
+import { useSpecialDates, type SpecialDate } from "@/hooks/use-special-dates";
 
 const messageSchema = z.object({
   title: z.string().trim().min(1, "Add a title for the message.").max(120, "Keep the title under 120 characters."),
   body: z.string().trim().min(1, "Write something for your person.").max(4000, "Keep the message under 4,000 characters."),
+  messageType: z.enum(["good_morning", "good_night", "miss_you", "proud", "encouragement", "laugh", "random"]),
   status: z.enum(["draft", "scheduled", "published"]),
   scheduledFor: z.string().nullable(),
+  specialDateId: z.string().nullable().optional(),
 });
 
 type FormState = {
   id?: string;
   title: string;
   body: string;
+  messageType: "good_morning" | "good_night" | "miss_you" | "proud" | "encouragement" | "laugh" | "random";
   status: "draft" | "scheduled" | "published";
   scheduledFor: string;
+  specialDateId?: string;
 };
 
 const blankForm: FormState = {
   title: "",
   body: "",
+  messageType: "random",
   status: "draft",
   scheduledFor: "",
+  specialDateId: "",
 };
 
 function statusLabel(status: PersonalMessageStatus) {
@@ -43,11 +51,46 @@ function statusVariant(status: PersonalMessageStatus) {
   return "outline" as const;
 }
 
+function messageTypeLabel(type: string) {
+  const labels: Record<string, string> = {
+    good_morning: "Good morning",
+    good_night: "Good night",
+    miss_you: "Miss you",
+    proud: "I'm proud of you",
+    encouragement: "Encouragement",
+    laugh: "Make them laugh",
+    random: "Random",
+  };
+  return labels[type] ?? type;
+}
+
+function messageTypeIcon(type: string) {
+  const icons: Record<string, any> = {
+    good_morning: Sun,
+    good_night: Moon,
+    miss_you: Heart,
+    proud: Trophy,
+    encouragement: Sparkles,
+    laugh: Smile,
+    random: Dice1,
+  };
+  return icons[type] ?? FileText;
+}
+
 function localDateTimeValue(value: string | null) {
   if (!value) return "";
   const date = new Date(value);
   const offset = date.getTimezoneOffset() * 60000;
   return new Date(date.getTime() - offset).toISOString().slice(0, 16);
+}
+
+function formatDate(value: string) {
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(new Date(`${value}T00:00:00Z`));
 }
 
 function displayDate(value: string | null) {
@@ -62,6 +105,7 @@ function displayDate(value: string | null) {
 
 export default function MessageWorkspace() {
   const { messages, loading, error, saving, refresh, saveMessage } = usePersonalMessages();
+  const { dates: specialDates } = useSpecialDates();
   const [form, setForm] = useState<FormState>(blankForm);
   const [formError, setFormError] = useState<string | null>(null);
   const [savedMessage, setSavedMessage] = useState<string | null>(null);
@@ -87,8 +131,10 @@ export default function MessageWorkspace() {
       id: message.id,
       title: message.title,
       body: message.body,
+      messageType: message.messageType,
       status: message.status === "archived" ? "draft" : message.status,
       scheduledFor: localDateTimeValue(message.scheduledFor),
+      specialDateId: message.specialDateId ?? "",
     });
     setFormError(null);
     setSavedMessage(null);
@@ -105,8 +151,10 @@ export default function MessageWorkspace() {
     const result = messageSchema.safeParse({
       title: form.title,
       body: form.body,
+      messageType: form.messageType,
       status: form.status,
       scheduledFor,
+      specialDateId: form.specialDateId,
     });
 
     if (!result.success) {
@@ -123,8 +171,10 @@ export default function MessageWorkspace() {
       id: form.id,
       title: result.data.title,
       body: result.data.body,
+      messageType: result.data.messageType,
       status: result.data.status,
       scheduledFor,
+      specialDateId: form.specialDateId,
     });
 
     if (response.error) {
@@ -230,17 +280,39 @@ export default function MessageWorkspace() {
               <Input id="message-title" value={form.title} onChange={(event) => setForm((current) => ({ ...current, title: event.target.value }))} className="h-11 rounded-xl" placeholder="A little reminder" disabled={saving} />
             </div>
             <div className="space-y-2">
+              <Label htmlFor="message-type">What kind of message?</Label>
+              <Select value={form.messageType} onValueChange={(v) => setForm((current) => ({ ...current, messageType: v as FormState["messageType"] }))} disabled={saving}>
+                <SelectTrigger id="message-type"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="good_morning"><Sun className="size-4 mr-2" aria-hidden="true" />Good morning</SelectItem>
+                  <SelectItem value="good_night"><Moon className="size-4 mr-2" aria-hidden="true" />Good night</SelectItem>
+                  <SelectItem value="miss_you"><Heart className="size-4 mr-2" aria-hidden="true" />Miss you</SelectItem>
+                  <SelectItem value="proud"><Trophy className="size-4 mr-2" aria-hidden="true" />I&apos;m proud of you</SelectItem>
+                  <SelectItem value="encouragement"><Sparkles className="size-4 mr-2" aria-hidden="true" />Encouragement</SelectItem>
+                  <SelectItem value="laugh"><Smile className="size-4 mr-2" aria-hidden="true" />Make them laugh</SelectItem>
+                  <SelectItem value="random"><Dice1 className="size-4 mr-2" aria-hidden="true" />Random</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="message-title">Title</Label>
+              <Input id="message-title" value={form.title} onChange={(event) => setForm((current) => ({ ...current, title: event.target.value }))} className="h-11 rounded-xl" placeholder="A little reminder" disabled={saving} />
+            </div>
+            <div className="space-y-2">
               <Label htmlFor="message-body">Message</Label>
               <Textarea id="message-body" value={form.body} onChange={(event) => setForm((current) => ({ ...current, body: event.target.value }))} className="min-h-44 rounded-xl leading-7" placeholder="Write it like you would say it…" disabled={saving} />
               <p className="text-xs text-muted-foreground">Personal beats perfect.</p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="message-status">When should it arrive?</Label>
-              <select id="message-status" value={form.status} onChange={(event) => setForm((current) => ({ ...current, status: event.target.value as FormState["status"] }))} className="flex h-11 w-full rounded-xl border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" disabled={saving}>
-                <option value="draft">Keep as a draft</option>
-                <option value="scheduled">Schedule for later</option>
-                <option value="published">Deliver now</option>
-              </select>
+              <Select value={form.status} onValueChange={(v) => setForm((current) => ({ ...current, status: v as FormState["status"] }))} disabled={saving}>
+                <SelectTrigger id="message-status"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="draft">Keep as a draft</SelectItem>
+                  <SelectItem value="scheduled">Schedule for later</SelectItem>
+                  <SelectItem value="published">Deliver now</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             {form.status === "scheduled" && (
               <div className="space-y-2">
@@ -251,6 +323,18 @@ export default function MessageWorkspace() {
                 </div>
               </div>
             )}
+            <div className="space-y-2">
+              <Label htmlFor="message-special-date">Link to special date <span className="font-normal text-muted-foreground">(optional)</span></Label>
+              <Select value={form.specialDateId ?? ""} onValueChange={(v) => setForm((current) => ({ ...current, specialDateId: v || undefined }))} disabled={saving}>
+                <SelectTrigger id="message-special-date"><SelectValue placeholder="Choose a special date…" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">None</SelectItem>
+                  {specialDates.map((date) => (
+                    <SelectItem key={date.id} value={date.id}>{date.label} ({formatDate(date.eventDate)})</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <Button className="h-11 w-full rounded-full" type="submit" disabled={saving}>
               {saving ? "Saving…" : form.status === "draft" ? "Save draft" : form.status === "scheduled" ? "Schedule message" : "Deliver message"}
               {form.status === "published" ? <Send className="size-4" aria-hidden="true" /> : <Sparkles className="size-4" aria-hidden="true" />}

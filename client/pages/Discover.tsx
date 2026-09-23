@@ -12,6 +12,7 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRelationship } from "@/contexts/RelationshipContext";
+import { Reveal, Stagger, StaggerItem } from "@/components/motion/Reveal";
 import { useOpenWhen, type OpenWhenLetter, occasionOptions, getOccasionLabel, getUnlockRuleLabel } from "@/hooks/use-open-when";
 
 const letterSchema = z.object({
@@ -247,35 +248,37 @@ export default function Discover() {
             <p className="mt-2 text-sm text-muted-foreground">The right words will find their moment.</p>
           </div>
         ) : (
-          <div className="mt-5 grid gap-4 md:grid-cols-2">
+          <Stagger className="mt-5 grid gap-4 md:grid-cols-2" stagger={0.06} >
             {letters.map((letter) => {
               const open = openLetterId === letter.id;
               const isLocked = letter.isLocked && letter.unlockRule !== "immediate";
               const isUnlocked = !letter.isLocked || letter.unlockRule === "immediate";
               return (
-                <article key={letter.id} className={`rounded-card border bg-surface p-5 shadow-subtle transition sm:p-6 ${open ? "border-primary/30 shadow-card" : "border-border"}`}>
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-semibold uppercase tracking-[0.16em] text-primary-dark">
-                          {letter.occasionType !== "custom" ? getOccasionLabel(letter.occasionType) : letter.occasion}
-                        </span>
-                        {isLocked && <Lock className="size-3.5 text-muted-foreground" aria-label="Locked" />}
-                        {isUnlocked && letter.unlockRule !== "immediate" && <Unlock className="size-3.5 text-primary" aria-label="Unlocked" />}
+                <StaggerItem key={letter.id}>
+                  <article className={`card-lift rounded-card border bg-surface p-5 shadow-subtle sm:p-6 ${open ? "border-primary/30 shadow-card" : "border-border"}`}>
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-semibold uppercase tracking-[0.16em] text-primary-dark">
+                            {letter.occasionType !== "custom" ? getOccasionLabel(letter.occasionType) : letter.occasion}
+                          </span>
+                          {isLocked && <Lock className="size-3.5 text-muted-foreground" aria-label="Locked" />}
+                          {isUnlocked && letter.unlockRule !== "immediate" && <Unlock className="size-3.5 text-primary" aria-label="Unlocked" />}
+                        </div>
+                        <h3 className="font-display mt-3 text-2xl font-semibold leading-tight tracking-[-0.03em]">{letter.title}</h3>
                       </div>
-                      <h3 className="font-display mt-3 text-2xl font-semibold leading-tight tracking-[-0.03em]">{letter.title}</h3>
+                      <div className="grid size-10 shrink-0 place-items-center rounded-2xl bg-primary-soft text-primary-dark"><Heart className="size-4 animate-heartbeat fill-current" aria-hidden="true" /></div>
                     </div>
-                    <div className="grid size-10 shrink-0 place-items-center rounded-2xl bg-primary-soft text-primary-dark"><Heart className="size-4 fill-current" aria-hidden="true" /></div>
-                  </div>
-                  {open && <p className="mt-5 whitespace-pre-wrap border-t border-border/70 pt-5 text-sm leading-7 text-muted-foreground">{letter.body}</p>}
-                  <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
-                    <Button variant={open ? "secondary" : "default"} className="h-10 rounded-full" onClick={() => setOpenLetterId(open ? null : letter.id)}>{open ? "Close letter" : "Open letter"}<MailOpen className="size-4" aria-hidden="true" /></Button>
-                    {isOwner && <div className="flex items-center gap-1"><Button variant="ghost" size="icon" className="rounded-full" aria-label="Edit letter" onClick={() => editLetter(letter)}><Pencil className="size-4" aria-hidden="true" /></Button><Button variant="ghost" size="icon" className="rounded-full text-muted-foreground hover:text-destructive" aria-label="Remove letter" onClick={() => void handleRemove(letter)} disabled={saving}><Trash2 className="size-4" aria-hidden="true" /></Button></div>}
-                  </div>
-                </article>
+                    {open && <p className="mt-5 animate-pop-in whitespace-pre-wrap border-t border-border/70 pt-5 text-sm leading-7 text-muted-foreground">{letter.body}</p>}
+                    <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
+                      <Button variant={open ? "secondary" : "default"} className="h-10 rounded-full" onClick={() => setOpenLetterId(open ? null : letter.id)}>{open ? "Close letter" : "Open letter"}<MailOpen className="size-4" aria-hidden="true" /></Button>
+                      {isOwner && <div className="flex items-center gap-1"><Button variant="ghost" size="icon" className="rounded-full" aria-label="Edit letter" onClick={() => editLetter(letter)}><Pencil className="size-4" aria-hidden="true" /></Button><Button variant="ghost" size="icon" className="rounded-full text-muted-foreground hover:text-destructive" aria-label="Remove letter" onClick={() => void handleRemove(letter)} disabled={saving}><Trash2 className="size-4" aria-hidden="true" /></Button></div>}
+                    </div>
+                  </article>
+                </StaggerItem>
               );
             })}
-          </div>
+          </Stagger>
         )}
       </section>
     </div>

@@ -8,6 +8,7 @@ create table public.special_dates (
   label text not null check (char_length(label) between 1 and 120),
   event_date date not null,
   notes text not null default '' check (char_length(notes) <= 500),
+  attached_message_id uuid references public.personal_messages(id) on delete set null,
   created_at timestamptz not null default timezone('utc', now()),
   updated_at timestamptz not null default timezone('utc', now())
 );
@@ -18,6 +19,10 @@ create unique index special_dates_relationship_start_idx
 
 create index special_dates_relationship_date_idx
   on public.special_dates(relationship_id, event_date);
+
+create index special_dates_attached_message_idx
+  on public.special_dates(relationship_id, attached_message_id)
+  where attached_message_id is not null;
 
 alter table public.special_dates enable row level security;
 
@@ -47,3 +52,5 @@ create policy "Owners can delete special dates"
   on public.special_dates for delete
   to authenticated
   using (public.is_relationship_owner(relationship_id));
+
+grant select, insert, update, delete on public.special_dates to authenticated;

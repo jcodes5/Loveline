@@ -4,14 +4,37 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useRelationship } from "@/contexts/RelationshipContext";
 
 export type QuoteCardPalette = "rose" | "dusk" | "honey";
+export type QuoteCardTemplate =
+  | "minimal"
+  | "romantic"
+  | "editorial"
+  | "polaroid"
+  | "night"
+  | "sunrise"
+  | "memory"
+  | "letterpress";
+export type QuoteCardBgType = "template" | "gradient" | "image";
+export type ArtisanalGradientKey =
+  | "rose_dawn"
+  | "lavender_dusk"
+  | "golden_hour"
+  | "twilight_velvet";
+export type QuoteCardAlignment = "left" | "center" | "right";
 
 export type QuoteCard = {
   id: string;
   relationshipId: string;
+  createdBy: string;
   quoteText: string;
   quoteAuthor: string;
   quoteSource: string | null;
   palette: QuoteCardPalette;
+  template: QuoteCardTemplate;
+  bgType: QuoteCardBgType;
+  gradient: ArtisanalGradientKey | null;
+  backgroundDataUrl: string | null;
+  alignment: QuoteCardAlignment;
+  showDate: boolean;
   createdAt: string;
   svg: string;
 };
@@ -21,6 +44,12 @@ export type QuoteCardInput = {
   quoteAuthor: string;
   quoteSource: string | null;
   palette: QuoteCardPalette;
+  template: QuoteCardTemplate;
+  bgType: QuoteCardBgType;
+  gradient: ArtisanalGradientKey | null;
+  backgroundDataUrl: string | null;
+  alignment: QuoteCardAlignment;
+  showDate: boolean;
 };
 
 type CardsResponse = { cards: QuoteCard[] };
@@ -109,6 +138,38 @@ export function useQuoteCards() {
     [relationship, session?.access_token],
   );
 
+  const renderCardPng = useCallback(
+    async (input: QuoteCardInput) => {
+      if (!session?.access_token || !relationship) {
+        return { error: new Error("Your Loveline connection is not ready yet.") };
+      }
+
+      setSaving(true);
+      setError(null);
+      try {
+        const response = await fetch("/api/quote-cards/render", {
+          method: "POST",
+          headers: {
+            ...authHeaders(session.access_token),
+            "content-type": "application/json",
+          },
+          body: JSON.stringify({ relationshipId: relationship.id, ...input }),
+        });
+
+        if (!response.ok) {
+          return { error: new Error(await responseError(response, "We couldn't export that quote card right now.")) };
+        }
+
+        return { error: null, blob: await response.blob() };
+      } catch {
+        return { error: new Error("We couldn't export that quote card right now.") };
+      } finally {
+        setSaving(false);
+      }
+    },
+    [relationship, session?.access_token],
+  );
+
   const removeCard = useCallback(
     async (id: string) => {
       if (!session?.access_token) {
@@ -133,5 +194,5 @@ export function useQuoteCards() {
     [session?.access_token],
   );
 
-  return { cards, loading, saving, error, refresh, createCard, removeCard };
+  return { cards, loading, saving, error, refresh, createCard, removeCard, renderCardPng };
 }

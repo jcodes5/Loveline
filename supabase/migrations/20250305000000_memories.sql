@@ -48,3 +48,5 @@ create policy "Owners can delete memories"
   on public.memories for delete
   to authenticated
   using (public.is_relationship_owner(relationship_id));
+
+grant select, insert, update, delete on public.memories to authenticated;

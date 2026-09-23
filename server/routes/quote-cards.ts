@@ -2,10 +2,14 @@ import { Router, type Request } from "express";
 import { z } from "zod";
 
 import { createClient } from "@supabase/supabase-js";
-import { renderQuoteCardSvg, type QuoteCardPalette, type QuoteCardTemplate } from "../quote-cards";
+import { renderQuoteCardSvg, renderQuoteCardPng, type QuoteCardPalette, type QuoteCardTemplate, type QuoteCardBgType, type ArtisanalGradientKey, type QuoteCardAlignment } from "../quote-cards";
 
 const paletteSchema = z.enum(["rose", "dusk", "honey"]);
-const templateSchema = z.enum(["minimal", "romantic", "editorial", "polaroid", "night", "sunrise", "memory"]);
+const templateSchema = z.enum(["minimal", "romantic", "editorial", "polaroid", "night", "sunrise", "memory", "letterpress"]);
+const bgTypeSchema = z.enum(["template", "gradient", "image"]);
+const gradientSchema = z.enum(["rose_dawn", "lavender_dusk", "golden_hour", "twilight_velvet"]);
+const alignmentSchema = z.enum(["left", "center", "right"]);
+const backgroundDataUrlSchema = z.string().regex(/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/, "Choose a valid image.").max(4_000_000);
 const quoteCardSchema = z.object({
   relationshipId: z.string().uuid("A relationship is required."),
   quoteText: z.string().trim().min(1, "Write a quote for the card.").max(600, "Keep the quote under 600 characters."),
@@ -13,18 +17,33 @@ const quoteCardSchema = z.object({
   quoteSource: z.string().trim().max(160, "Keep the source under 160 characters.").nullable(),
   palette: paletteSchema,
   template: templateSchema.default("minimal"),
+  bgType: bgTypeSchema.default("template"),
+  gradient: gradientSchema.nullable().optional(),
+  backgroundDataUrl: backgroundDataUrlSchema.nullable().optional(),
+  alignment: alignmentSchema.default("center"),
+  showDate: z.boolean().default(false),
 });
 
-const quoteCardSelect = "id, relationship_id, quote_text, quote_author, quote_source, palette, template, created_at";
+const renderSchema = quoteCardSchema.extend({
+  dateLabel: z.string().trim().max(80).optional(),
+});
+
+const quoteCardSelect = "id, relationship_id, created_by, quote_text, quote_author, quote_source, palette, template, bg_type, gradient, background_data_url, alignment, show_date, created_at";
 
 type QuoteCardRow = {
   id: string;
   relationship_id: string;
+  created_by: string;
   quote_text: string;
   quote_author: string;
   quote_source: string | null;
   palette: QuoteCardPalette;
   template: QuoteCardTemplate;
+  bg_type: QuoteCardBgType;
+  gradient: ArtisanalGradientKey | null;
+  background_data_url: string | null;
+  alignment: QuoteCardAlignment;
+  show_date: boolean;
   created_at: string;
 };
 
@@ -50,24 +69,66 @@ async function authenticate(request: Request) {
   return error || !data.user ? null : { supabase, userId: data.user.id };
 }
 
-function mapQuoteCard(value: QuoteCardRow) {
-  return {
-    id: value.id,
-    relationshipId: value.relationship_id,
-    quoteText: value.quote_text,
-    quoteAuthor: value.quote_author,
-    quoteSource: value.quote_source,
-    palette: value.palette,
-    template: value.template,
-    createdAt: value.created_at,
-    svg: renderQuoteCardSvg({
+async function mapQuoteCard(value: QuoteCardRow) {
+  let svg: string;
+  try {
+    svg = await renderQuoteCardSvg({
       quoteText: value.quote_text,
       quoteAuthor: value.quote_author,
       quoteSource: value.quote_source,
       palette: value.palette,
       template: value.template,
-    }),
+      bgType: value.bg_type,
+      gradient: value.gradient,
+      backgroundDataUrl: value.background_data_url,
+      alignment: value.alignment,
+      showDate: value.show_date,
+      dateLabel: formatDate(value.show_date),
+    });
+  } catch {
+    svg = fallbackCardSvg(value.palette, value.quote_text, value.quote_author);
+  }
+  return {
+    id: value.id,
+    relationshipId: value.relationship_id,
+    createdBy: value.created_by,
+    quoteText: value.quote_text,
+    quoteAuthor: value.quote_author,
+    quoteSource: value.quote_source,
+    palette: value.palette,
+    template: value.template,
+    bgType: value.bg_type,
+    gradient: value.gradient,
+    backgroundDataUrl: value.background_data_url,
+    alignment: value.alignment,
+    showDate: value.show_date,
+    createdAt: value.created_at,
+    svg,
   };
+}
+
+function escapeXml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;");
+}
+
+function fallbackCardSvg(palette: QuoteCardPalette, quoteText: string, quoteAuthor: string): string {
+  const background = palette === "rose" ? "#fff1f3" : palette === "honey" ? "#f4e8cf" : "#30242a";
+  const foreground = palette === "dusk" ? "#fff8f6" : "#4b2632";
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="1200" viewBox="0 0 1200 1200"><rect width="1200" height="1200" fill="${background}"/><text x="100" y="560" font-family="Georgia, serif" font-size="58" font-weight="700" fill="${foreground}">${escapeXml(quoteText.slice(0, 120))}</text><text x="100" y="640" font-family="Georgia, serif" font-size="28" fill="${foreground}">${escapeXml(quoteAuthor)}</text></svg>`;
+}
+
+function formatDate(showDate: boolean) {
+  if (!showDate) return undefined;
+  return new Intl.DateTimeFormat("en-US", {
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  }).format(new Date());
 }
 
 export function createQuoteCardRouter() {
@@ -100,7 +161,8 @@ export function createQuoteCardRouter() {
         return;
       }
 
-      response.json({ cards: (data ?? []).map(mapQuoteCard) });
+      const cards = await Promise.all((data ?? []).map(mapQuoteCard));
+      response.json({ cards });
     } catch {
       response.status(500).json({ error: "We couldn't load quote cards right now." });
     }
@@ -131,6 +193,11 @@ export function createQuoteCardRouter() {
           quote_source: parsed.data.quoteSource || null,
           palette: parsed.data.palette,
           template: parsed.data.template,
+          bg_type: parsed.data.bgType,
+          gradient: parsed.data.gradient ?? null,
+          background_data_url: parsed.data.backgroundDataUrl ?? null,
+          alignment: parsed.data.alignment,
+          show_date: parsed.data.showDate,
         })
         .select(quoteCardSelect)
         .single();
@@ -140,9 +207,57 @@ export function createQuoteCardRouter() {
         return;
       }
 
-      response.status(201).json({ card: mapQuoteCard(data) });
+      response.status(201).json({ card: await mapQuoteCard(data) });
     } catch {
       response.status(500).json({ error: "We couldn't save that quote card right now." });
+    }
+  });
+
+  router.post("/render", async (request, response) => {
+    try {
+      const auth = await authenticate(request);
+      if (!auth) {
+        response.status(401).json({ error: "Sign in to export a quote card." });
+        return;
+      }
+      const { supabase, userId } = auth;
+
+      const parsed = renderSchema.safeParse(request.body);
+      if (!parsed.success) {
+        response.status(400).json({ error: parsed.error.issues[0]?.message ?? "Check the quote card details." });
+        return;
+      }
+
+      const { data: membership, error: membershipError } = await supabase
+        .from("relationship_members")
+        .select("id")
+        .eq("relationship_id", parsed.data.relationshipId)
+        .eq("user_id", userId)
+        .maybeSingle();
+      if (membershipError || !membership) {
+        response.status(403).json({ error: "Both partners join your Loveline before exporting quote cards." });
+        return;
+      }
+
+      const png = await renderQuoteCardPng({
+        quoteText: parsed.data.quoteText,
+        quoteAuthor: parsed.data.quoteAuthor,
+        quoteSource: parsed.data.quoteSource,
+        palette: parsed.data.palette,
+        template: parsed.data.template,
+        bgType: parsed.data.bgType,
+        gradient: parsed.data.gradient,
+        backgroundDataUrl: parsed.data.backgroundDataUrl,
+        alignment: parsed.data.alignment,
+        showDate: parsed.data.showDate,
+        dateLabel: parsed.data.dateLabel ?? formatDate(parsed.data.showDate),
+      });
+
+      response.setHeader("content-type", "image/png");
+      response.setHeader("cache-control", "no-store");
+      response.send(png);
+    } catch {
+      response.status(500).json({ error: "We couldn't export that quote card right now." });
     }
   });
 

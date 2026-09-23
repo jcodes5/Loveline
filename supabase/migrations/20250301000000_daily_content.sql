@@ -31,3 +31,5 @@ create policy "Owners can manage daily content"
   to authenticated
   using (public.is_relationship_owner(relationship_id))
   with check (public.is_relationship_owner(relationship_id));
+
+grant select, insert, update, delete on public.daily_content to authenticated;

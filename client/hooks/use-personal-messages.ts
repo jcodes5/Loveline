@@ -6,13 +6,17 @@ import { supabase } from "@/lib/supabase";
 
 export type PersonalMessageStatus = "draft" | "scheduled" | "published" | "archived";
 
+export type PersonalMessageType = "good_morning" | "good_night" | "miss_you" | "proud" | "encouragement" | "laugh" | "random";
+
 export type PersonalMessage = {
   id: string;
   title: string;
   body: string;
+  messageType: PersonalMessageType;
   status: PersonalMessageStatus;
   scheduledFor: string | null;
   publishedAt: string | null;
+  specialDateId: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -21,8 +25,10 @@ export type PersonalMessageInput = {
   id?: string;
   title: string;
   body: string;
+  messageType: PersonalMessageType;
   status: PersonalMessageStatus;
   scheduledFor: string | null;
+  specialDateId?: string | null;
 };
 
 type PersonalMessagesState = {
@@ -38,9 +44,11 @@ function mapMessage(value: {
   id: string;
   title: string;
   body: string;
+  message_type: string;
   status: PersonalMessageStatus;
   scheduled_for: string | null;
   published_at: string | null;
+  special_date_id: string | null;
   created_at: string;
   updated_at: string;
 }): PersonalMessage {
@@ -48,16 +56,18 @@ function mapMessage(value: {
     id: value.id,
     title: value.title,
     body: value.body,
+    messageType: value.message_type as PersonalMessageType,
     status: value.status,
     scheduledFor: value.scheduled_for,
     publishedAt: value.published_at,
+    specialDateId: value.special_date_id,
     createdAt: value.created_at,
     updatedAt: value.updated_at,
   };
 }
 
 const messageSelect =
-  "id, title, body, status, scheduled_for, published_at, created_at, updated_at";
+  "id, title, body, message_type, status, scheduled_for, published_at, special_date_id, created_at, updated_at";
 
 export function useLatestPersonalMessage() {
   const { relationship } = useRelationship();
@@ -162,9 +172,11 @@ export function usePersonalMessages(): PersonalMessagesState {
         author_id: user.id,
         title: input.title,
         body: input.body,
+        message_type: input.messageType,
         status: input.status,
         scheduled_for: input.status === "scheduled" ? input.scheduledFor : null,
         published_at: input.status === "published" ? new Date().toISOString() : null,
+        special_date_id: input.specialDateId ?? null,
       };
 
       const result = input.id

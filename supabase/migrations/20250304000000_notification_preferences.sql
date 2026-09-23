@@ -18,3 +18,5 @@ create policy "Users can manage their notification preferences"
   to authenticated
   using (user_id = auth.uid() and public.is_relationship_member(relationship_id))
   with check (user_id = auth.uid() and public.is_relationship_member(relationship_id));
+
+grant select, insert, update, delete on public.notification_preferences to authenticated;

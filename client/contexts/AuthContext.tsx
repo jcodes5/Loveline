@@ -146,13 +146,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           if (!user) {
             return { error: new Error("User not found") };
           }
-          const { data: rel } = await supabase
+          let relationshipId: string | null = null;
+
+          const { data: ownRel } = await supabase
             .from("relationships")
             .select("id")
             .eq("owner_id", user.id)
             .limit(1)
             .maybeSingle();
-          const relationshipId = rel?.id;
+          relationshipId = ownRel?.id ?? null;
+
+          if (!relationshipId) {
+            const { data: memberShip } = await supabase
+              .from("relationship_members")
+              .select("relationship_id")
+              .eq("user_id", user.id)
+              .limit(1)
+              .maybeSingle();
+            relationshipId = memberShip?.relationship_id ?? null;
+          }
+
           if (!relationshipId) {
             return { error: new Error("No relationship found") };
           }

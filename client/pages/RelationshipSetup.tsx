@@ -1,14 +1,15 @@
 import { useState } from "react";
-import { ArrowRight, Heart, Mail, Users } from "lucide-react";
+import { ArrowRight, Check, ClipboardCopy, Heart, Mail, Sparkles, Users } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { z } from "zod";
 
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PrivateMark } from "@/components/auth/AuthBoundary";
 import { useRelationship } from "@/contexts/RelationshipContext";
+import { Reveal } from "@/components/motion/Reveal";
 
 const setupSchema = z.object({
   name: z.string().trim().min(2, "Give your relationship a name.").max(80, "Keep the name under 80 characters."),
@@ -22,6 +23,9 @@ export default function RelationshipSetup() {
   const [email, setEmail] = useState("");
   const [error, setError] = useState<string | null>(loadError);
   const [submitting, setSubmitting] = useState(false);
+  const [inviteLink, setInviteLink] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+  const [relationshipName, setRelationshipName] = useState("");
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
   event.preventDefault();
@@ -63,7 +67,8 @@ export default function RelationshipSetup() {
       return;
     }
 
-    navigate("/", { replace: true });
+    setRelationshipName(result.data.name);
+    setInviteLink(invitationResult.link);
   } catch (error) {
     console.error("Relationship setup failed:", error);
 
@@ -77,10 +82,22 @@ export default function RelationshipSetup() {
   }
 }
 
+async function copyLink() {
+  if (!inviteLink) return;
+  try {
+    await navigator.clipboard.writeText(inviteLink);
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 2000);
+  } catch {
+    setError("Your browser blocked the copy. Long-press the link to copy it manually.");
+  }
+}
+
   return (
     <div className="page-wash min-h-screen bg-background px-4 py-8 sm:px-6 sm:py-12">
       <div className="mx-auto flex min-h-[calc(100vh-4rem)] w-full max-w-3xl items-center justify-center">
-        <section className="w-full rounded-[28px] border border-border bg-surface px-6 py-9 shadow-elevated sm:px-12 sm:py-12">
+        <Reveal className="w-full" y={24} once>
+          <section className="w-full rounded-[28px] border border-border bg-surface px-6 py-9 shadow-elevated sm:px-12 sm:py-12">
           <div className="flex items-center justify-between gap-4">
             <div className="inline-flex items-center gap-2.5">
               <span className="grid size-9 place-items-center rounded-full bg-primary text-primary-foreground shadow-subtle">
@@ -91,6 +108,41 @@ export default function RelationshipSetup() {
             <PrivateMark />
           </div>
 
+          {inviteLink ? (
+            <div className="mx-auto mt-10 max-w-xl">
+              <div className="mx-auto grid size-16 place-items-center rounded-2xl bg-primary-soft text-primary-dark">
+                <Sparkles className="size-7" aria-hidden="true" />
+              </div>
+              <p className="mt-7 text-center text-xs font-semibold uppercase tracking-[0.18em] text-primary-dark">Almost there</p>
+              <h1 className="mt-3 text-center font-display text-4xl font-semibold tracking-[-0.04em] sm:text-5xl">Your invitation is ready.</h1>
+              <p className="mx-auto mt-4 max-w-md text-center text-base leading-7 text-muted-foreground">
+                Send this one-time link to the person you love. Only someone who signs in with <span className="font-semibold text-foreground">{email}</span> can open it, and it stops working the moment it&apos;s used.
+              </p>
+
+              {(error || loadError) && (
+                <Alert variant="destructive" className="mt-6">
+                  <AlertDescription>{error ?? loadError}</AlertDescription>
+                </Alert>
+              )}
+
+              <div className="mt-8 rounded-2xl border border-primary/15 bg-primary-soft/40 p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary-dark">{relationshipName} · invite link</p>
+                <p className="mt-2 break-all text-sm leading-6 text-muted-foreground">{inviteLink}</p>
+                <Button className="mt-4 h-11 w-full rounded-full" onClick={() => void copyLink()}>
+                  {copied ? <Check className="size-4" aria-hidden="true" /> : <ClipboardCopy className="size-4" aria-hidden="true" />}
+                  {copied ? "Copied" : "Copy link"}
+                </Button>
+              </div>
+
+              <div className="mt-6 flex justify-center">
+                <Button variant="ghost" className="h-11 rounded-full text-muted-foreground" onClick={() => navigate("/", { replace: true })}>
+                  I&apos;ll do this now
+                  <ArrowRight className="size-4" aria-hidden="true" />
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <>
           <div className="mx-auto mt-14 max-w-xl text-center">
             <div className="mx-auto grid size-16 place-items-center rounded-2xl bg-primary-soft text-primary-dark">
               <Users className="size-7" aria-hidden="true" />
@@ -102,7 +154,6 @@ export default function RelationshipSetup() {
 
           {(error || loadError) && (
             <Alert variant="destructive" className="mx-auto mt-9 max-w-xl">
-              <AlertTitle>We couldn&apos;t finish setting that up.</AlertTitle>
               <AlertDescription>{error ?? loadError}</AlertDescription>
             </Alert>
           )}
@@ -119,19 +170,22 @@ export default function RelationshipSetup() {
                 <Mail className="pointer-events-none absolute left-3.5 top-3.5 size-4 text-muted-foreground" aria-hidden="true" />
                 <Input id="recipient-email" type="email" autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} className="h-12 rounded-xl pl-10" placeholder="someone-you-love@example.com" disabled={submitting} />
               </div>
-              <p className="text-xs text-muted-foreground">We&apos;ll keep the invitation ready for the delivery step.</p>
+              <p className="text-xs text-muted-foreground">They&apos;ll need to sign in with this email to accept, and it can only be used once.</p>
             </div>
             <Button className="h-12 w-full rounded-full" type="submit" disabled={submitting}>
               {submitting ? "Setting up your space…" : "Create our Loveline"}
               <ArrowRight className="size-4" aria-hidden="true" />
             </Button>
           </form>
+            </>
+          )}
 
           <p className="mx-auto mt-8 flex max-w-xl items-center justify-center gap-2 text-center text-xs text-muted-foreground">
             <Heart className="size-3.5 fill-primary text-primary" aria-hidden="true" />
             Made with love. Delivered daily.
           </p>
         </section>
+        </Reveal>
       </div>
     </div>
   );

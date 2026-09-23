@@ -1,14 +1,22 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 
 import { useAuth } from "@/contexts/AuthContext";
+import { buildInviteLink, generateInviteToken } from "@/lib/invite";
 import { supabase } from "@/lib/supabase";
+
+export type RelationshipRole = "owner" | "recipient";
 
 export type Relationship = {
   id: string;
   ownerId: string;
   name: string;
   createdAt: string;
+  role: RelationshipRole;
 };
+
+export type InviteResult =
+  | { error: Error; link?: undefined }
+  | { error: null; link: string };
 
 type RelationshipContextValue = {
   relationship: Relationship | null;
@@ -16,24 +24,29 @@ type RelationshipContextValue = {
   error: string | null;
   refresh: () => Promise<void>;
   createRelationship: (name: string) => Promise<{ error: Error | null; relationship?: Relationship }>;
-  createInvitation: (email: string, relationshipId?: string) => Promise<{ error: Error | null }>;
+  createInvitation: (email: string, relationshipId?: string) => Promise<InviteResult>;
+  acceptInvitation: (token: string) => Promise<{ error: Error | null; relationship?: Relationship }>;
 };
 
 const RelationshipContext = createContext<RelationshipContextValue | undefined>(
   undefined,
 );
 
-function mapRelationship(value: {
-  id: string;
-  owner_id: string;
-  name: string;
-  created_at: string;
-}): Relationship {
+function mapRelationship(
+  value: {
+    id: string;
+    owner_id: string;
+    name: string;
+    created_at: string;
+  },
+  role: RelationshipRole = "owner",
+): Relationship {
   return {
     id: value.id,
     ownerId: value.owner_id,
     name: value.name,
     createdAt: value.created_at,
+    role,
   };
 }
 
@@ -50,16 +63,25 @@ async function ensureAuth(supabaseClient: NonNullable<typeof supabase>): Promise
 }
 
 export function RelationshipProvider({ children }: { children: React.ReactNode }) {
-  const { user } = useAuth();
+  const { ready, user } = useAuth();
   const [relationship, setRelationship] = useState<Relationship | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
-    if (!supabase || !user) {
-      console.debug("refresh: no supabase or user", { supabase: !!supabase, user: !!user });
+    if (!supabase) {
       setRelationship(null);
       setLoading(false);
+      return;
+    }
+
+    if (!user) {
+      // While auth is still restoring a session, keep loading=true so the
+      // relationship boundary never flashes a "no relationship" redirect.
+      if (ready) {
+        setRelationship(null);
+        setLoading(false);
+      }
       return;
     }
 
@@ -87,11 +109,54 @@ export function RelationshipProvider({ children }: { children: React.ReactNode }
       console.error("refresh relationships query failed:", queryError);
       setError("We couldn't load your Loveline space right now. Please try again.");
       setRelationship(null);
-    } else {
-      setRelationship(data ? mapRelationship(data) : null);
+      setLoading(false);
+      return;
+    }
+
+    if (data) {
+      setRelationship(mapRelationship(data, "owner"));
+      setLoading(false);
+      return;
+    }
+
+    const { data: membership, error: membershipError } = await supabase
+      .from("relationship_members")
+      .select("relationship_id, role")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+
+    if (membershipError) {
+      console.error("refresh memberships query failed:", membershipError);
+      setError("We couldn't load your Loveline space right now. Please try again.");
+      setRelationship(null);
+      setLoading(false);
+      return;
+    }
+
+    if (!membership?.relationship_id) {
+      setRelationship(null);
+      setLoading(false);
+      return;
+    }
+
+    const { data: memberRelationship, error: memberRelationshipError } = await supabase
+      .from("relationships")
+      .select("id, owner_id, name, created_at")
+      .eq("id", membership.relationship_id)
+      .maybeSingle();
+
+    if (memberRelationshipError) {
+      console.error("refresh member relationship query failed:", memberRelationshipError);
+      setError("We couldn't load your Loveline space right now. Please try again.");
+      setRelationship(null);
+    } else if (memberRelationship) {
+      const role: RelationshipRole = membership.role === "recipient" ? "recipient" : "owner";
+      setRelationship(mapRelationship(memberRelationship, role));
     }
     setLoading(false);
-  }, [user]);
+  }, [ready, user]);
 
   useEffect(() => {
     void refresh();
@@ -238,12 +303,17 @@ export function RelationshipProvider({ children }: { children: React.ReactNode }
           return { error: new Error("Your session has expired. Please sign in again.") };
         }
 
+        const token = generateInviteToken();
+        const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+
         const { error: insertError } = await supabase
           .from("relationship_invitations")
           .insert({
             relationship_id: targetRelationshipId,
             inviter_id: authUser.id,
             invitee_email: email,
+            token,
+            expires_at: expiresAt,
           });
 
         if (insertError) {
@@ -251,6 +321,51 @@ export function RelationshipProvider({ children }: { children: React.ReactNode }
           return { error: new Error("We couldn't save the invitation right now. Please try again.") };
         }
 
+        return { error: null, link: buildInviteLink(token) };
+      },
+      async acceptInvitation(token) {
+        if (!supabase) {
+          return { error: new Error("We couldn't reach Loveline right now. Please try again.") };
+        }
+
+        const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
+        if (authError || !authUser) {
+          return { error: new Error("Your session has expired. Please sign in again.") };
+        }
+
+        const { data: relationshipId, error: rpcError } = await supabase.rpc(
+          "redeem_invitation_token",
+          { invite_token: token },
+        );
+
+        if (rpcError) {
+          console.error("acceptInvitation rpc failed:", rpcError);
+          return { error: new Error(rpcError.message) };
+        }
+
+        if (!relationshipId) {
+          return { error: new Error("That invitation could not be accepted.") };
+        }
+
+        const { data: acceptedRelationship, error: relationshipError } = await supabase
+          .from("relationships")
+          .select("id, owner_id, name, created_at")
+          .eq("id", relationshipId)
+          .maybeSingle();
+
+        if (relationshipError) {
+          console.error("acceptInvitation relationship fetch failed:", relationshipError);
+          await refresh();
+          return { error: null };
+        }
+
+        if (acceptedRelationship) {
+          const nextRelationship = mapRelationship(acceptedRelationship, "recipient");
+          setRelationship(nextRelationship);
+          return { error: null, relationship: nextRelationship };
+        }
+
+        await refresh();
         return { error: null };
       },
     }),

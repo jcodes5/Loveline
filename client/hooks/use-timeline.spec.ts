@@ -26,6 +26,14 @@ const baseMemory = {
   thumbnailUrl: "",
 };
 
+const baseReaction = {
+  relationshipId: "relationship-1",
+  senderId: "partner-1",
+  cardId: null,
+  kind: "love" as const,
+  note: null,
+};
+
 describe("relationship timeline", () => {
   it("combines dates and memories in chronological order", () => {
     const items = buildTimelineItems(
@@ -62,6 +70,7 @@ describe("relationship timeline", () => {
           url: "https://example.com/memory.jpg",
         },
       ],
+      [],
     );
 
     expect(items.map((item) => item.id)).toEqual(["date-date-1", "memory-memory-1", "date-date-2"]);
@@ -81,9 +90,37 @@ describe("relationship timeline", () => {
         createdAt: "2025-05-08T12:00:00.000Z",
         url: "https://example.com/memory.png",
       },
-    ]);
+    ], []);
 
     expect(items[0]?.sortDate).toBe("2025-05-08");
     expect(items[0]?.type).toBe("memory");
+  });
+
+  it("places reactions into the timeline by the day they were sent", () => {
+    const items = buildTimelineItems([], [
+      {
+        id: "memory-1",
+        relationshipId: "relationship-1",
+        ...baseMemory,
+        caption: "A quiet night",
+        takenAt: "2025-05-08",
+        createdAt: "2025-05-08T12:00:00.000Z",
+        url: "https://example.com/memory.png",
+      },
+    ], [
+      {
+        id: "reaction-1",
+        ...baseReaction,
+        createdAt: "2025-05-09T20:15:00.000Z",
+      },
+      {
+        id: "reaction-2",
+        ...baseReaction,
+        createdAt: "2025-05-09T09:00:00.000Z",
+      },
+    ]);
+
+    expect(items.map((item) => item.id)).toEqual(["memory-memory-1", "reaction-reaction-2", "reaction-reaction-1"]);
+    expect(items[1]?.type).toBe("reaction");
   });
 });

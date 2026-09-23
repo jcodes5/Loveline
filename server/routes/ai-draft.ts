@@ -11,6 +11,7 @@ const draftTypeSchema = z.enum([
   "quote_card",
   "mood_suggestion",
   "batch_daily",
+  "poetry",
 ]);
 
 const aiDraftSchema = z.object({
@@ -76,7 +77,7 @@ export function createAIDraftRouter() {
       const { type, context, count } = parsed.data;
 
       let effectiveContext = context;
-      if (type !== "batch_daily" && type !== "quote_card" && type !== "mood_suggestion") {
+      if (type !== "batch_daily" && type !== "quote_card" && type !== "mood_suggestion" && type !== "poetry") {
         const relationshipId = String(context.relationshipId ?? "");
         if (!relationshipId) {
           response.status(400).json({ error: "relationshipId is required in context." });
@@ -116,6 +117,16 @@ export function createAIDraftRouter() {
 
       if (type === "quote_card") {
         effectiveContext = { ...context, palette: context.palette ?? "rose" };
+      }
+
+      if (type === "poetry") {
+        const relationshipId = String(context.relationshipId ?? "");
+        if (relationshipId) {
+          const isOwner = await requireOwner(supabase, userId, relationshipId);
+          if (isOwner) {
+            effectiveContext = { ...context, relationshipName: context.relationshipName ?? "our Loveline" };
+          }
+        }
       }
 
       if (type === "batch_daily") {

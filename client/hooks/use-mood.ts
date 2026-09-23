@@ -47,11 +47,11 @@ type MoodRow = {
   user_id: string;
   mood: MoodValue;
   entry_date: string;
-  message_id: string | null;
-  letter_id: string | null;
-  ai_prompt: string | null;
-  custom_message: string | null;
-  enabled: boolean;
+  message_id?: string | null;
+  letter_id?: string | null;
+  ai_prompt?: string | null;
+  custom_message?: string | null;
+  enabled?: boolean;
 };
 
 function localDateKey(date = new Date()) {
@@ -103,7 +103,7 @@ export function useMoodCheckIn() {
     setError(null);
     const { data, error: queryError } = await supabase
       .from("mood_entries")
-      .select("id, relationship_id, user_id, mood, entry_date, message_id, letter_id, ai_prompt, custom_message, enabled")
+      .select("id, relationship_id, user_id, mood, entry_date")
       .eq("relationship_id", relationship.id)
       .eq("user_id", user.id)
       .eq("entry_date", entryDate)
@@ -142,7 +142,7 @@ export function useMoodCheckIn() {
           },
           { onConflict: "relationship_id,user_id,entry_date" },
         )
-        .select("id, relationship_id, user_id, mood, entry_date, message_id, letter_id, ai_prompt, custom_message, enabled")
+        .select("id, relationship_id, user_id, mood, entry_date")
         .single();
 
       setSaving(false);

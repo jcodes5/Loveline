@@ -7,6 +7,7 @@ import { createQuoteCardRouter } from "./routes/quote-cards";
 import { createDailyContentRouter } from "./routes/daily-content";
 import { createAIDraftRouter } from "./routes/ai-draft";
 import { createAdminSummaryRouter } from "./routes/admin-summary";
+import { createLoveReactionRouter } from "./routes/love-reactions";
 
 export function createServer() {
   const app = express();
@@ -28,6 +29,7 @@ export function createServer() {
   app.use("/api/daily-content", createDailyContentRouter());
   app.use("/api/ai", createAIDraftRouter());
   app.use("/api/admin", createAdminSummaryRouter());
+  app.use("/api/love-reactions", createLoveReactionRouter());
 
   return app;
 }

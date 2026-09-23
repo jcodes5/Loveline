@@ -1,5 +1,6 @@
 import { useCallback, useMemo } from "react";
 
+import { useLoveReactions, type LoveReaction } from "@/hooks/use-love-reactions";
 import { useMemories, type Memory } from "@/hooks/use-memories";
 import { useSpecialDates, type SpecialDate, type SpecialDateKind } from "@/hooks/use-special-dates";
 
@@ -20,6 +21,16 @@ export type TimelineItem =
       eventDate: string | null;
       caption: string;
       url: string;
+    }
+  | {
+      id: string;
+      type: "reaction";
+      sortDate: string;
+      createdAt: string;
+      senderId: string;
+      cardId: string | null;
+      kind: string;
+      note: string | null;
     };
 
 function memorySortDate(memory: Memory) {
@@ -29,6 +40,7 @@ function memorySortDate(memory: Memory) {
 export function buildTimelineItems(
   dates: SpecialDate[],
   memories: Memory[],
+  reactions: LoveReaction[],
 ): TimelineItem[] {
   const dateItems: TimelineItem[] = dates.map((date) => ({
     id: `date-${date.id}`,
@@ -49,30 +61,47 @@ export function buildTimelineItems(
     url: memory.url,
   }));
 
-  return [...dateItems, ...memoryItems].sort((first, second) => {
+  const reactionItems: TimelineItem[] = reactions.map((reaction) => ({
+    id: `reaction-${reaction.id}`,
+    type: "reaction",
+    sortDate: reaction.createdAt.slice(0, 10),
+    createdAt: reaction.createdAt,
+    senderId: reaction.senderId,
+    cardId: reaction.cardId,
+    kind: reaction.kind,
+    note: reaction.note,
+  }));
+
+  const typeOrder: Record<TimelineItem["type"], number> = { date: 0, memory: 1, reaction: 2 };
+  return [...dateItems, ...memoryItems, ...reactionItems].sort((first, second) => {
     const dateOrder = first.sortDate.localeCompare(second.sortDate);
     if (dateOrder !== 0) return dateOrder;
-    return first.type === second.type ? 0 : first.type === "date" ? -1 : 1;
+    if (first.type !== second.type) return typeOrder[first.type] - typeOrder[second.type];
+    if (first.type === "reaction" && second.type === "reaction") {
+      return first.createdAt.localeCompare(second.createdAt);
+    }
+    return 0;
   });
 }
 
 export function useTimeline() {
   const specialDates = useSpecialDates();
   const memories = useMemories();
+  const loveReactions = useLoveReactions();
   const items = useMemo(
-    () => buildTimelineItems(specialDates.dates, memories.memories),
-    [memories.memories, specialDates.dates],
+    () => buildTimelineItems(specialDates.dates, memories.memories, loveReactions.reactions),
+    [loveReactions.reactions, memories.memories, specialDates.dates],
   );
 
   const refresh = useCallback(async () => {
-    await Promise.all([specialDates.refresh(), memories.refresh()]);
-  }, [memories.refresh, specialDates.refresh]);
+    await Promise.all([specialDates.refresh(), memories.refresh(), loveReactions.refresh()]);
+  }, [loveReactions.refresh, memories.refresh, specialDates.refresh]);
 
   return {
     items,
     daysTogether: specialDates.daysTogether,
-    loading: specialDates.loading || memories.loading,
-    error: specialDates.error ?? memories.error,
+    loading: specialDates.loading || memories.loading || loveReactions.loading,
+    error: specialDates.error ?? memories.error ?? loveReactions.error,
     refresh,
   };
 }

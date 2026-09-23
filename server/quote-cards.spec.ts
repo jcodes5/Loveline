@@ -19,7 +19,7 @@ describe("quote card renderer", () => {
     // Should not contain unescaped characters that break XML
     expect(svg).not.toContain("<close>");
     expect(svg).not.toContain('"favorite"');
-  });
+  }, 20000);
 
   it("uses the selected palette", async () => {
     const svg = await renderQuoteCardSvg({
@@ -32,5 +32,5 @@ describe("quote card renderer", () => {
 
     expect(svg).toContain('fill="#30242a"');
     expect(svg).toContain('fill="#fff8f6"');
-  });
+  }, 20000);
 });

@@ -1,6 +1,10 @@
 import { ArrowLeft, CalendarHeart, Clock3, Heart, Image as ImageIcon, LockKeyhole, RefreshCw, Sparkles } from "lucide-react";
 import { Link } from "react-router-dom";
 
+import { AnimatedNumber } from "@/components/motion/AnimatedNumber";
+import { HeartBeat } from "@/components/motion/HeartBeat";
+import { Reveal, Stagger, StaggerItem } from "@/components/motion/Reveal";
+import { useAuth } from "@/contexts/AuthContext";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { useTimeline, type TimelineItem } from "@/hooks/use-timeline";
@@ -21,53 +25,98 @@ function formatDate(value: string) {
   }).format(new Date(`${value}T00:00:00Z`));
 }
 
-function TimelineEntry({ item }: { item: TimelineItem }) {
-  if (item.type === "date") {
+function formatTimestamp(value: string) {
+  return new Intl.DateTimeFormat("en-US", {
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(new Date(value));
+}
+
+export default function Timeline() {
+  const { user } = useAuth();
+  const { items, daysTogether, loading, error, refresh } = useTimeline();
+
+  function TimelineEntry({ item }: { item: TimelineItem }) {
+    if (item.type === "date") {
+      return (
+        <article className="card-lift relative rounded-card border border-primary/15 bg-surface p-5 shadow-subtle sm:p-6">
+          <div className="flex items-start gap-4">
+            <div className="grid size-11 shrink-0 place-items-center rounded-2xl bg-primary-soft text-primary-dark">
+              <CalendarHeart className="size-5" aria-hidden="true" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary-dark">
+                {kindLabels[item.kind]}
+              </p>
+              <h2 className="font-display mt-2 text-2xl font-semibold leading-tight tracking-[-0.03em]">
+                {item.label}
+              </h2>
+              <p className="mt-2 text-sm text-muted-foreground">{formatDate(item.eventDate)}</p>
+              {item.notes && <p className="mt-4 text-sm leading-7 text-muted-foreground">{item.notes}</p>}
+            </div>
+          </div>
+        </article>
+      );
+    }
+
+    if (item.type === "memory") {
+      return (
+        <article className="card-lift overflow-hidden rounded-card border border-border bg-surface shadow-subtle">
+          <div className="aspect-[16/9] overflow-hidden bg-surface-muted">
+            <img
+              src={item.url}
+              alt={item.caption || "A saved Loveline memory"}
+              loading="lazy"
+              className="h-full w-full object-cover transition-transform duration-500 hover:scale-[1.02]"
+            />
+          </div>
+          <div className="p-5 sm:p-6">
+            <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-primary-dark">
+              <ImageIcon className="size-3.5" aria-hidden="true" />
+              A memory to keep
+            </div>
+            {item.caption && <p className="mt-3 text-base leading-7 text-foreground">{item.caption}</p>}
+            {item.eventDate && <p className="mt-3 text-sm text-muted-foreground">{formatDate(item.eventDate)}</p>}
+          </div>
+        </article>
+      );
+    }
+
+    const sentByMe = user?.id === item.senderId;
     return (
-      <article className="relative rounded-card border border-primary/15 bg-surface p-5 shadow-subtle sm:p-6">
+      <article className="card-lift relative rounded-card border border-[#30242a]/15 bg-[#30242a] p-5 text-[#fff8f6] shadow-subtle sm:p-6">
         <div className="flex items-start gap-4">
-          <div className="grid size-11 shrink-0 place-items-center rounded-2xl bg-primary-soft text-primary-dark">
-            <CalendarHeart className="size-5" aria-hidden="true" />
+          <div className="grid size-11 shrink-0 place-items-center rounded-2xl bg-[#efb0be]/20 text-[#efb0be]">
+            <HeartBeat>
+              <Heart className="size-5 fill-current" aria-hidden="true" />
+            </HeartBeat>
           </div>
           <div className="min-w-0">
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary-dark">
-              {kindLabels[item.kind]}
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#efb0be]">
+              {sentByMe ? "You sent this" : "A little love from your partner"}
             </p>
             <h2 className="font-display mt-2 text-2xl font-semibold leading-tight tracking-[-0.03em]">
-              {item.label}
+              {sentByMe ? "You sent a heart." : "A heart came your way."}
             </h2>
-            <p className="mt-2 text-sm text-muted-foreground">{formatDate(item.eventDate)}</p>
-            {item.notes && <p className="mt-4 text-sm leading-7 text-muted-foreground">{item.notes}</p>}
+            <p className="mt-2 text-sm text-white/60">{formatTimestamp(item.createdAt)}</p>
+            <p className="mt-4 text-sm leading-7 text-white/70">
+              {item.cardId
+                ? "It was sent for a card you both keep."
+                : "A small wave across your Loveline."}
+            </p>
+            {item.note && (
+              <p className="mt-4 rounded-2xl bg-white/10 px-4 py-3 text-base font-medium leading-7 text-white">
+                “{item.note}”
+              </p>
+            )}
           </div>
         </div>
       </article>
     );
   }
-
-  return (
-    <article className="overflow-hidden rounded-card border border-border bg-surface shadow-subtle">
-      <div className="aspect-[16/9] overflow-hidden bg-surface-muted">
-        <img
-          src={item.url}
-          alt={item.caption || "A saved Loveline memory"}
-          loading="lazy"
-          className="h-full w-full object-cover transition-transform duration-500 hover:scale-[1.02]"
-        />
-      </div>
-      <div className="p-5 sm:p-6">
-        <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-primary-dark">
-          <ImageIcon className="size-3.5" aria-hidden="true" />
-          A memory to keep
-        </div>
-        {item.caption && <p className="mt-3 text-base leading-7 text-foreground">{item.caption}</p>}
-        {item.eventDate && <p className="mt-3 text-sm text-muted-foreground">{formatDate(item.eventDate)}</p>}
-      </div>
-    </article>
-  );
-}
-
-export default function Timeline() {
-  const { items, daysTogether, loading, error, refresh } = useTimeline();
 
   return (
     <div className="mx-auto w-full max-w-5xl px-4 pb-16 pt-9 sm:px-6 md:pt-12 lg:px-8 lg:pb-20">
@@ -89,21 +138,25 @@ export default function Timeline() {
         </div>
       </header>
 
-      <section className="mt-8 overflow-hidden rounded-card bg-[#30242a] p-6 text-[#fff8f6] shadow-card sm:p-8" aria-labelledby="timeline-summary-title">
-        <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <div className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-primary-soft">
-              <Heart className="size-3.5 fill-current" aria-hidden="true" />
-              Your story, together
+      <Reveal className="mt-8" delay={0.05}>
+        <section className="overflow-hidden rounded-card bg-[#30242a] p-6 text-[#fff8f6] shadow-card sm:p-8" aria-labelledby="timeline-summary-title">
+          <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <div className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-primary-soft">
+                <Heart className="size-3.5 animate-heartbeat fill-current" aria-hidden="true" />
+                Your story, together
+              </div>
+              <h2 id="timeline-summary-title" className="font-display mt-4 text-4xl font-semibold tracking-[-0.04em] sm:text-5xl">Every little thing counts.</h2>
             </div>
-            <h2 id="timeline-summary-title" className="font-display mt-4 text-4xl font-semibold tracking-[-0.04em] sm:text-5xl">Every little thing counts.</h2>
+            <div className="sm:text-right">
+              <p className="font-display text-5xl font-semibold leading-none text-primary-soft">
+                {daysTogether != null ? <AnimatedNumber value={daysTogether} /> : "—"}
+              </p>
+              <p className="mt-2 text-sm text-white/60">days together</p>
+            </div>
           </div>
-          <div className="sm:text-right">
-            <p className="font-display text-5xl font-semibold leading-none text-primary-soft">{daysTogether ?? "—"}</p>
-            <p className="mt-2 text-sm text-white/60">days together</p>
-          </div>
-        </div>
-      </section>
+        </section>
+      </Reveal>
 
       {error && (
         <Alert variant="destructive" className="mt-8">
@@ -141,9 +194,9 @@ export default function Timeline() {
             </div>
             <span className="inline-flex items-center gap-2 text-sm text-muted-foreground"><Clock3 className="size-4" aria-hidden="true" />{items.length} {items.length === 1 ? "moment" : "moments"}</span>
           </div>
-          <div className="mt-5 grid gap-5 md:grid-cols-2">
-            {items.map((item) => <TimelineEntry item={item} key={item.id} />)}
-          </div>
+          <Stagger className="mt-5 grid gap-5 md:grid-cols-2" stagger={0.06}>
+            {items.map((item) => <StaggerItem key={item.id}><TimelineEntry item={item} /></StaggerItem>)}
+          </Stagger>
         </section>
       )}
     </div>

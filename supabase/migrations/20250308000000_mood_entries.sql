@@ -36,3 +36,5 @@ create policy "Users can delete their own mood entries"
   on public.mood_entries for delete
   to authenticated
   using (user_id = auth.uid() and public.is_relationship_member(relationship_id));
+
+grant select, insert, update, delete on public.mood_entries to authenticated;

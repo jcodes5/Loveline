@@ -48,3 +48,5 @@ create policy "Service role can manage message deliveries"
   to service_role
   using (true)
   with check (true);
+
+grant select, insert, update, delete on public.notification_devices to authenticated;

@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRelationship } from "@/contexts/RelationshipContext";
+import { Reveal, Stagger, StaggerItem } from "@/components/motion/Reveal";
 import { useMemories } from "@/hooks/use-memories";
 
 function displayDate(value: string | null) {
@@ -177,46 +178,48 @@ export default function Memories() {
               <span className="text-sm text-muted-foreground">{memories.length} {memories.length === 1 ? "memory" : "memories"}</span>
             </div>
           </div>
-          <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <Stagger className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3" stagger={0.05} >
             {memories
               .filter((m) => filterAlbum === "all" || (filterAlbum === "favorites" ? m.isFavorite : m.albumId === filterAlbum))
               .map((memory) => (
-                <article key={memory.id} className="group overflow-hidden rounded-card border border-border bg-surface shadow-subtle">
-                  <div className="relative aspect-[4/3] overflow-hidden bg-surface-muted">
-                    <img src={memory.thumbnailUrl || memory.url} alt={memory.caption || "A saved Loveline memory"} loading="lazy" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]" />
-                    {isOwner && (
-                      <div className="absolute top-3 right-3 flex flex-col gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className={`rounded-full ${memory.isFavorite ? "text-yellow-400" : "bg-black/45 text-white hover:bg-yellow-400 hover:text-black"}`}
-                          aria-label={memory.isFavorite ? "Remove from favorites" : "Add to favorites"}
-                          onClick={() => void toggleFavorite(memory.id, memory.isFavorite)}
-                          disabled={saving}
-                        >
-                          <Star className={`size-4 ${memory.isFavorite ? "fill-current" : ""}`} aria-hidden="true" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="rounded-full bg-black/45 text-white hover:bg-destructive hover:text-white"
-                          aria-label="Remove memory"
-                          onClick={() => void handleRemove(memory.id)}
-                          disabled={saving}
-                        >
-                          <Trash2 className="size-4" aria-hidden="true" />
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-                  <div className="p-4">
-                    {memory.caption && <p className="text-sm leading-6 text-foreground">{memory.caption}</p>}
-                    {displayDate(memory.takenAt) && <p className="mt-2 text-xs text-muted-foreground">{displayDate(memory.takenAt)}</p>}
-                    {memory.albumId && <p className="mt-2 text-xs text-muted-foreground">Album</p>}
-                  </div>
-                </article>
+                <StaggerItem key={memory.id}>
+                  <article className="card-lift group overflow-hidden rounded-card border border-border bg-surface shadow-subtle">
+                    <div className="relative aspect-[4/3] overflow-hidden bg-surface-muted">
+                      <img src={memory.thumbnailUrl || memory.url} alt={memory.caption || "A saved Loveline memory"} loading="lazy" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]" />
+                      {isOwner && (
+                        <div className="absolute top-3 right-3 flex flex-col gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className={`rounded-full animate-pop-in ${memory.isFavorite ? "text-yellow-400" : "bg-black/45 text-white hover:bg-yellow-400 hover:text-black"}`}
+                            aria-label={memory.isFavorite ? "Remove from favorites" : "Add to favorites"}
+                            onClick={() => void toggleFavorite(memory.id, memory.isFavorite)}
+                            disabled={saving}
+                          >
+                            <Star className={`size-4 ${memory.isFavorite ? "fill-current" : ""}`} aria-hidden="true" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="rounded-full bg-black/45 text-white hover:bg-destructive hover:text-white"
+                            aria-label="Remove memory"
+                            onClick={() => void handleRemove(memory.id)}
+                            disabled={saving}
+                          >
+                            <Trash2 className="size-4" aria-hidden="true" />
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                    <div className="p-4">
+                      {memory.caption && <p className="text-sm leading-6 text-foreground">{memory.caption}</p>}
+                      {displayDate(memory.takenAt) && <p className="mt-2 text-xs text-muted-foreground">{displayDate(memory.takenAt)}</p>}
+                      {memory.albumId && <p className="mt-2 text-xs text-muted-foreground">Album</p>}
+                    </div>
+                  </article>
+                </StaggerItem>
               ))}
-          </div>
+          </Stagger>
         </section>
       )}
     </div>
