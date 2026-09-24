@@ -33,5 +33,5 @@
 
 [[schedule]]
   function = "send-due-notifications"
-  cron = "0 6 * * *"
+  cron = "0 * * * *"
   timezone = "UTC"

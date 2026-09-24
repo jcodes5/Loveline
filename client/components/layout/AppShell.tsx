@@ -33,6 +33,7 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRelationship } from "@/contexts/RelationshipContext";
+import { useProfileNames } from "@/contexts/ProfileNamesContext";
 import { cn } from "@/lib/utils";
 
 const navItems = [
@@ -175,10 +176,11 @@ function AdminMenu() {
 export default function AppShell() {
   const { signOut, user } = useAuth();
   const { relationship } = useRelationship();
+  const { displayName } = useProfileNames();
   const isOwner = Boolean(user && relationship?.ownerId === user.id);
   const [scrolled, setScrolled] = useState(false);
   const profileInitial =
-    user?.user_metadata?.display_name?.slice(0, 1).toUpperCase() ??
+    displayName?.slice(0, 1).toUpperCase() ??
     user?.email?.slice(0, 1).toUpperCase() ??
     "L";
 

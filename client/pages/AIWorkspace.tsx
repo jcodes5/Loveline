@@ -1,6 +1,6 @@
 import { useState, useCallback } from "react";
 import { ArrowLeft, Bot, Check, Copy, FileText, Heart, LoaderCircle, MessageSquare, Quote, RefreshCw, Save, Sparkles, Trash2 } from "lucide-react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -87,7 +87,6 @@ const moodOptions = [
 export default function AIWorkspace() {
   const { user, session } = useAuth();
   const { relationship } = useRelationship();
-  const navigate = useNavigate();
 
   const [selectedType, setSelectedType] = useState<AIDraftType>("daily_affirmation");
   const [context, setContext] = useState<FormContext>({
@@ -196,8 +195,9 @@ export default function AIWorkspace() {
               quote_text: "A thought to keep close.",
               quote_author: "Someone wise",
               quote_source: null,
+              approval_status: "pending",
               updated_at: new Date().toISOString(),
-            }, { onConflict: "relationship_id,content_date" })
+            })
             .select()
             .single();
           if (saveError) throw saveError;
@@ -215,8 +215,10 @@ export default function AIWorkspace() {
               author_id: user.id,
               title,
               body,
+              message_type: selectedType === "morning_message" ? "good_morning" : "good_night",
               status,
               scheduled_for: status === "scheduled" ? new Date().toISOString() : null,
+              published_at: status === "published" ? new Date().toISOString() : null,
             })
             .select()
             .single();
@@ -243,8 +245,45 @@ export default function AIWorkspace() {
           break;
         }
         case "batch_daily": {
-          // Batch saving would need a more complex flow - for now just show success
-          result = { error: null, content: { saved: true } };
+          const { drafts } = candidate.content as { drafts?: Array<Record<string, unknown>> };
+          const rows = (drafts ?? []).map((draft) => ({
+            relationship_id: relationship.id,
+            content_date: String(draft.contentDate ?? ""),
+            hero_label: String(draft.heroLabel ?? "Today, made for you"),
+            hero_title: String(draft.heroTitle ?? ""),
+            hero_body: String(draft.heroBody ?? ""),
+            note_body: String(draft.noteBody ?? ""),
+            affirmation: String(draft.affirmation ?? ""),
+            affirmation_detail: String(draft.affirmationDetail ?? ""),
+            quote_text: String(draft.quoteText ?? ""),
+            quote_author: String(draft.quoteAuthor ?? "Loveline"),
+            quote_source: draft.quoteSource ? String(draft.quoteSource) : null,
+            approval_status: "pending",
+            updated_at: new Date().toISOString(),
+          })).filter((draft) =>
+            /^\d{4}-\d{2}-\d{2}$/.test(draft.content_date) &&
+            draft.hero_title &&
+            draft.hero_body &&
+            draft.note_body &&
+            draft.affirmation &&
+            draft.affirmation_detail &&
+            draft.quote_text &&
+            draft.quote_author
+          );
+
+          if (rows.length === 0) {
+            throw new Error("This batch did not include complete daily-content drafts.");
+          }
+
+          const { data, error: saveError } = await supabase
+            .from("daily_content")
+            .upsert(rows, { onConflict: "relationship_id,content_date", ignoreDuplicates: true })
+            .select();
+          if (saveError) throw saveError;
+          if (!data?.length) {
+            throw new Error("Those dates already have content. Review it in Daily Content instead of replacing it.");
+          }
+          result = { error: null, content: data };
           break;
         }
         case "mood_suggestion":
@@ -256,7 +295,7 @@ export default function AIWorkspace() {
       if (result.error) throw result.error;
 
       setSavedContent(candidate.content);
-      toast.success("Saved successfully!");
+      toast.success(selectedType === "batch_daily" ? "Batch daily content saved." : "Saved successfully!");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Save failed");
       toast.error(err instanceof Error ? err.message : "Save failed");

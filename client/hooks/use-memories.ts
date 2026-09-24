@@ -11,6 +11,7 @@ export type Memory = {
   height: number;
   bytes: number;
   caption: string;
+  notes: string;
   takenAt: string | null;
   createdAt: string;
   albumId: string | null;
@@ -90,7 +91,7 @@ export function useMemories() {
   }, [refresh]);
 
   const addMemory = useCallback(
-    async (file: File, caption: string, takenAt: string | null, albumId: string | null = null) => {
+    async (file: File, caption: string, takenAt: string | null, albumId: string | null = null, notes = "") => {
       if (!session?.access_token || !relationship) {
         return { error: new Error("Your Loveline connection is not ready yet.") };
       }
@@ -112,7 +113,7 @@ export function useMemories() {
           },
           body: JSON.stringify({
             relationshipId: relationship.id,
-            memory: { dataUrl, caption: caption.trim(), takenAt, albumId },
+            memory: { dataUrl, caption: caption.trim(), takenAt, albumId, notes: notes.trim() },
           }),
         });
 
@@ -216,5 +217,18 @@ export function useMemories() {
     [session?.access_token],
   );
 
-  return { memories, loading, saving, error, refresh, addMemory, removeMemory, toggleFavorite, updateAlbum };
+  const updateNotes = useCallback(async (id: string, notes: string) => {
+    if (!session?.access_token) return { error: new Error("Your Loveline connection is not ready yet.") };
+    const response = await fetch(`/api/memories/${encodeURIComponent(id)}`, {
+      method: "PATCH",
+      headers: { ...authHeaders(session.access_token), "content-type": "application/json" },
+      body: JSON.stringify({ notes }),
+    });
+    if (!response.ok) return { error: new Error(await responseError(response, "We couldn't update that memory right now.")) };
+    const payload = (await response.json()) as SingleMemoryResponse;
+    setMemories((current) => current.map((memory) => (memory.id === id ? payload.memory : memory)));
+    return { error: null };
+  }, [session?.access_token]);
+
+  return { memories, loading, saving, error, refresh, addMemory, removeMemory, toggleFavorite, updateAlbum, updateNotes };
 }

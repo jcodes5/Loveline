@@ -640,7 +640,7 @@ export default function Create() {
                 <StaggerItem key={card.id}>
                   <article className="card-lift group overflow-hidden rounded-card border border-border bg-surface shadow-subtle">
                     <div className="overflow-hidden">
-                      <img src={quoteCardImageUrl(card.svg)} alt={`Card by ${card.quoteAuthor}`} loading="lazy" className="aspect-square w-full object-cover transition-transform duration-700 group-hover:scale-[1.03]" />
+                      <img src={card.imageUrl ?? quoteCardImageUrl(card.svg)} alt={`Card by ${card.quoteAuthor}`} loading="lazy" className="aspect-square w-full object-cover transition-transform duration-700 group-hover:scale-[1.03]" />
                     </div>
                     <div className="flex items-center justify-between gap-3 p-4">
                       <div className="min-w-0">

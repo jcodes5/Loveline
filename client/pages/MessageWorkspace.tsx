@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, CalendarClock, Check, FileText, MailPlus, Plus, Send, Sparkles, Sun, Moon, Heart, Trophy, Smile, Dice1 } from "lucide-react";
+import { Archive, ArchiveRestore, ArrowLeft, CalendarClock, Check, FileText, History, MailPlus, Plus, Send, Sparkles, Sun, Moon, Heart, Trophy, Smile, Dice1 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { z } from "zod";
 
@@ -104,7 +104,20 @@ function displayDate(value: string | null) {
 }
 
 export default function MessageWorkspace() {
-  const { messages, loading, error, saving, refresh, saveMessage } = usePersonalMessages();
+  const {
+    messages,
+    loading,
+    error,
+    saving,
+    revisions,
+    revisionsLoading,
+    revisionsError,
+    refresh,
+    refreshRevisions,
+    saveMessage,
+    archiveMessage,
+    restoreMessage,
+  } = usePersonalMessages();
   const { dates: specialDates } = useSpecialDates();
   const [form, setForm] = useState<FormState>(blankForm);
   const [formError, setFormError] = useState<string | null>(null);
@@ -119,6 +132,10 @@ export default function MessageWorkspace() {
     if (!form.id || selectedMessage) return;
     setForm(blankForm);
   }, [form.id, selectedMessage]);
+
+  useEffect(() => {
+    if (selectedMessage) void refreshRevisions(selectedMessage.id);
+  }, [refreshRevisions, selectedMessage?.id, selectedMessage?.updatedAt]);
 
   function startNewMessage() {
     setForm(blankForm);
@@ -192,6 +209,21 @@ export default function MessageWorkspace() {
     setForm({ ...blankForm });
   }
 
+  async function handleArchive(message: PersonalMessage) {
+    const result = message.status === "archived"
+      ? await restoreMessage(message.id)
+      : await archiveMessage(message.id);
+    if (result.error) {
+      setFormError(result.error.message);
+      return;
+    }
+    if (form.id === message.id && message.status !== "archived") setForm(blankForm);
+    setFormError(null);
+    setSavedMessage(message.status === "archived"
+      ? "Message restored as a draft. Review it before scheduling or delivering it."
+      : "Message archived. It will no longer be delivered.");
+  }
+
   return (
     <div className="mx-auto w-full max-w-6xl px-4 pb-16 pt-9 sm:px-6 md:pt-12 lg:px-8 lg:pb-20">
       <header className="flex flex-col gap-5 border-b border-border/70 pb-8 sm:flex-row sm:items-end sm:justify-between">
@@ -244,19 +276,40 @@ export default function MessageWorkspace() {
           {!loading && messages.length > 0 && (
             <div className="mt-5 space-y-2">
               {messages.map((message) => (
-                <button
-                  type="button"
+                <article
                   key={message.id}
-                  onClick={() => editMessage(message)}
-                  className={`w-full rounded-2xl border p-4 text-left transition-colors ${form.id === message.id ? "border-primary/40 bg-primary-soft/30" : "border-border hover:bg-surface-muted"}`}
+                  className={`rounded-2xl border p-4 transition-colors ${form.id === message.id ? "border-primary/40 bg-primary-soft/30" : "border-border hover:bg-surface-muted"}`}
                 >
-                  <div className="flex items-start justify-between gap-3">
-                    <span className="truncate font-semibold">{message.title}</span>
-                    <Badge variant={statusVariant(message.status)}>{statusLabel(message.status)}</Badge>
+                  <button
+                    type="button"
+                    onClick={() => editMessage(message)}
+                    aria-pressed={form.id === message.id}
+                    className="w-full text-left"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <span className="truncate font-semibold">{message.title}</span>
+                      <Badge variant={statusVariant(message.status)}>{statusLabel(message.status)}</Badge>
+                    </div>
+                    <p className="mt-2 line-clamp-2 text-sm leading-6 text-muted-foreground">{message.body}</p>
+                    {message.status === "scheduled" && message.scheduledFor && <p className="mt-3 inline-flex items-center gap-1.5 text-xs font-medium text-primary-dark"><CalendarClock className="size-3.5" aria-hidden="true" />{displayDate(message.scheduledFor)}</p>}
+                  </button>
+                  <div className="mt-2 flex justify-end">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="size-9 rounded-full text-muted-foreground"
+                      title={message.status === "archived" ? "Restore as draft" : "Archive message"}
+                      aria-label={message.status === "archived" ? `Restore ${message.title} as a draft` : `Archive ${message.title}`}
+                      onClick={() => void handleArchive(message)}
+                      disabled={saving}
+                    >
+                      {message.status === "archived"
+                        ? <ArchiveRestore className="size-4" aria-hidden="true" />
+                        : <Archive className="size-4" aria-hidden="true" />}
+                    </Button>
                   </div>
-                  <p className="mt-2 line-clamp-2 text-sm leading-6 text-muted-foreground">{message.body}</p>
-                  {message.status === "scheduled" && message.scheduledFor && <p className="mt-3 inline-flex items-center gap-1.5 text-xs font-medium text-primary-dark"><CalendarClock className="size-3.5" aria-hidden="true" />{displayDate(message.scheduledFor)}</p>}
-                </button>
+                </article>
               ))}
             </div>
           )}
@@ -275,10 +328,6 @@ export default function MessageWorkspace() {
           {savedMessage && <Alert className="mt-6 border-success/25 bg-success/10"><Check className="size-4 text-success" aria-hidden="true" /><AlertDescription>{savedMessage}</AlertDescription></Alert>}
 
           <form className="mt-7 space-y-5" onSubmit={handleSubmit}>
-            <div className="space-y-2">
-              <Label htmlFor="message-title">Title</Label>
-              <Input id="message-title" value={form.title} onChange={(event) => setForm((current) => ({ ...current, title: event.target.value }))} className="h-11 rounded-xl" placeholder="A little reminder" disabled={saving} />
-            </div>
             <div className="space-y-2">
               <Label htmlFor="message-type">What kind of message?</Label>
               <Select value={form.messageType} onValueChange={(v) => setForm((current) => ({ ...current, messageType: v as FormState["messageType"] }))} disabled={saving}>
@@ -340,6 +389,44 @@ export default function MessageWorkspace() {
               {form.status === "published" ? <Send className="size-4" aria-hidden="true" /> : <Sparkles className="size-4" aria-hidden="true" />}
             </Button>
           </form>
+
+          {selectedMessage && (
+            <section className="mt-8 border-t border-border pt-6" aria-labelledby="message-history-title">
+              <div className="flex items-center gap-2">
+                <History className="size-4 text-muted-foreground" aria-hidden="true" />
+                <h3 id="message-history-title" className="text-sm font-semibold">Version history</h3>
+              </div>
+              {selectedMessage.publishedAt && (
+                <p className="mt-2 text-xs leading-5 text-muted-foreground">
+                  This message has been delivered. Changes are saved as prior versions and won&apos;t send another notification.
+                </p>
+              )}
+              {revisionsLoading ? (
+                <p className="mt-3 text-sm text-muted-foreground" role="status">Loading versions…</p>
+              ) : revisionsError ? (
+                <p className="mt-3 text-sm text-destructive" role="alert">{revisionsError}</p>
+              ) : revisions.length === 0 ? (
+                <p className="mt-3 text-sm text-muted-foreground">No earlier versions yet.</p>
+              ) : (
+                <div className="mt-3 space-y-2">
+                  {revisions.map((revision) => (
+                    <details key={revision.id} className="rounded-xl border border-border px-4 py-3">
+                      <summary className="cursor-pointer text-sm font-medium">
+                        {displayDate(revision.versionUpdatedAt) ?? "Earlier version"} · {statusLabel(revision.status)}
+                      </summary>
+                      <div className="mt-3 border-t border-border pt-3">
+                        <p className="font-semibold">{revision.title}</p>
+                        <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-muted-foreground">{revision.body}</p>
+                        <p className="mt-3 text-xs text-muted-foreground">
+                          Changed {displayDate(revision.changedAt) ?? "at an unknown time"}
+                        </p>
+                      </div>
+                    </details>
+                  ))}
+                </div>
+              )}
+            </section>
+          )}
         </section>
       </div>
     </div>

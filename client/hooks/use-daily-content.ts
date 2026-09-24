@@ -15,6 +15,7 @@ export type DailyContent = {
   quoteText: string;
   quoteAuthor: string;
   quoteSource: string | null;
+  approvalStatus: "pending" | "approved" | "rejected";
 };
 
 type DailyContentStatus = "live" | "empty" | "error";
@@ -40,6 +41,7 @@ const fallbackContent: DailyContent = {
   quoteText: "There is no charm equal to tenderness of heart.",
   quoteAuthor: "Jane Austen",
   quoteSource: "Sense and Sensibility",
+  approvalStatus: "approved",
 };
 
 function localDateKey(date: Date) {
@@ -61,6 +63,7 @@ function mapDailyContent(value: {
   quote_text: string;
   quote_author: string;
   quote_source: string | null;
+  approval_status: "pending" | "approved" | "rejected";
 }): DailyContent {
   return {
     id: value.id,
@@ -74,6 +77,7 @@ function mapDailyContent(value: {
     quoteText: value.quote_text,
     quoteAuthor: value.quote_author,
     quoteSource: value.quote_source,
+    approvalStatus: value.approval_status,
   };
 }
 
@@ -100,10 +104,11 @@ export function useDailyContent(): DailyContentState {
     supabase
       .from("daily_content")
       .select(
-        "id, content_date, hero_label, hero_title, hero_body, note_body, affirmation, affirmation_detail, quote_text, quote_author, quote_source",
+        "id, content_date, hero_label, hero_title, hero_body, note_body, affirmation, affirmation_detail, quote_text, quote_author, quote_source, approval_status",
       )
       .eq("relationship_id", relationship.id)
       .eq("content_date", contentDate)
+      .eq("approval_status", "approved")
       .maybeSingle()
       .then(({ data, error }) => {
         if (!active) return;

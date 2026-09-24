@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { ArrowLeft, CalendarDays, Heart, ImagePlus, LoaderCircle, LockKeyhole, Star, Trash2, Upload } from "lucide-react";
+import { ArrowLeft, ArrowRight, CalendarDays, FolderPlus, Heart, ImagePlus, LoaderCircle, LockKeyhole, Pencil, Star, Trash2, Upload, X } from "lucide-react";
 import { Link } from "react-router-dom";
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -8,9 +8,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRelationship } from "@/contexts/RelationshipContext";
 import { Reveal, Stagger, StaggerItem } from "@/components/motion/Reveal";
+import { useAlbums } from "@/hooks/use-albums";
 import { useMemories } from "@/hooks/use-memories";
 
 function displayDate(value: string | null) {
@@ -26,15 +28,30 @@ function displayDate(value: string | null) {
 export default function Memories() {
   const { user } = useAuth();
   const { relationship } = useRelationship();
-  const { memories, loading, saving, error, refresh, addMemory, removeMemory, toggleFavorite, updateAlbum } = useMemories();
+  const { memories, loading, saving, error, refresh, addMemory, removeMemory, toggleFavorite, updateAlbum, updateNotes } = useMemories();
+  const { albums, loading: albumsLoading, saving: albumsSaving, error: albumsError, saveAlbum, removeAlbum } = useAlbums();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<File | null>(null);
   const [caption, setCaption] = useState("");
+  const [notes, setNotes] = useState("");
+  const [selectedMemoryId, setSelectedMemoryId] = useState<string | null>(null);
+  const [editingNotes, setEditingNotes] = useState("");
+  const [notesSaving, setNotesSaving] = useState(false);
+  const [notesError, setNotesError] = useState<string | null>(null);
+  const [notesSaved, setNotesSaved] = useState(false);
   const [takenAt, setTakenAt] = useState("");
+  const [uploadAlbumId, setUploadAlbumId] = useState("none");
+  const [albumName, setAlbumName] = useState("");
+  const [albumDescription, setAlbumDescription] = useState("");
+  const [editingAlbumId, setEditingAlbumId] = useState<string | null>(null);
+  const [editingAlbumName, setEditingAlbumName] = useState("");
+  const [editingAlbumDescription, setEditingAlbumDescription] = useState("");
+  const [editingAlbumCoverId, setEditingAlbumCoverId] = useState("none");
   const [formError, setFormError] = useState<string | null>(null);
   const [savedMessage, setSavedMessage] = useState<string | null>(null);
   const isOwner = Boolean(user && relationship?.ownerId === user.id);
   const [filterAlbum, setFilterAlbum] = useState<string | "all" | "favorites">("all");
+  const albumById = new Map(albums.map((album) => [album.id, album]));
 
   async function handleUpload(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -45,7 +62,7 @@ export default function Memories() {
       return;
     }
 
-    const result = await addMemory(file, caption, takenAt || null);
+    const result = await addMemory(file, caption, takenAt || null, uploadAlbumId === "none" ? null : uploadAlbumId, notes);
     if (result.error) {
       setFormError(result.error.message);
       return;
@@ -53,15 +70,87 @@ export default function Memories() {
 
     setFile(null);
     setCaption("");
+    setNotes("");
     setTakenAt("");
+    setUploadAlbumId("none");
     if (fileInputRef.current) fileInputRef.current.value = "";
     setSavedMessage("Your memory is safely tucked away.");
+  }
+
+  async function handleCreateAlbum(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setFormError(null);
+    setSavedMessage(null);
+    const result = await saveAlbum({ name: albumName, description: albumDescription });
+    if (result.error) {
+      setFormError(result.error.message);
+      return;
+    }
+    setAlbumName("");
+    setAlbumDescription("");
+    setSavedMessage("Album created.");
+  }
+
+  async function handleRemoveAlbum(id: string) {
+    if (!window.confirm("Remove this album? Memories inside it will stay in Loveline.")) return;
+    const result = await removeAlbum(id);
+    if (result.error) setFormError(result.error.message);
+    if (filterAlbum === id) setFilterAlbum("all");
+    if (uploadAlbumId === id) setUploadAlbumId("none");
+    if (editingAlbumId === id) setEditingAlbumId(null);
+  }
+
+  function startAlbumEdit(album: (typeof albums)[number]) {
+    setEditingAlbumId(album.id);
+    setEditingAlbumName(album.name);
+    setEditingAlbumDescription(album.description);
+    setEditingAlbumCoverId(album.coverMemoryId ?? "none");
+  }
+
+  async function handleSaveAlbum(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!editingAlbumId) return;
+    const result = await saveAlbum({
+      id: editingAlbumId,
+      name: editingAlbumName,
+      description: editingAlbumDescription,
+      coverMemoryId: editingAlbumCoverId === "none" ? null : editingAlbumCoverId,
+    });
+    if (result.error) {
+      setFormError(result.error.message);
+      return;
+    }
+    setEditingAlbumId(null);
+    setSavedMessage("Album updated.");
   }
 
   async function handleRemove(id: string) {
     if (!window.confirm("Remove this memory from Loveline?")) return;
     const result = await removeMemory(id);
     if (result.error) setFormError(result.error.message);
+  }
+
+  const selectedMemory = memories.find((memory) => memory.id === selectedMemoryId) ?? null;
+
+  function openMemory(id: string) {
+    const memory = memories.find((item) => item.id === id);
+    if (!memory) return;
+    setSelectedMemoryId(id);
+    setEditingNotes(memory.notes);
+  }
+
+  async function handleSaveNotes() {
+    if (!selectedMemory) return;
+    setNotesSaving(true);
+    setNotesError(null);
+    setNotesSaved(false);
+    const result = await updateNotes(selectedMemory.id, editingNotes);
+    setNotesSaving(false);
+    if (result.error) {
+      setNotesError(result.error.message);
+      return;
+    }
+    setNotesSaved(true);
   }
 
   return (
@@ -120,8 +209,24 @@ export default function Memories() {
               </div>
             </div>
             <div className="space-y-2 lg:col-span-2">
+              <Label htmlFor="memory-album">Album <span className="font-normal text-muted-foreground">(optional)</span></Label>
+              <Select value={uploadAlbumId} onValueChange={setUploadAlbumId} disabled={saving || albumsLoading}>
+                <SelectTrigger id="memory-album"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">No album</SelectItem>
+                  {albums.map((album) => (
+                    <SelectItem key={album.id} value={album.id}>{album.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2 lg:col-span-2">
               <Label htmlFor="memory-caption">A little caption <span className="font-normal text-muted-foreground">(optional)</span></Label>
               <Textarea id="memory-caption" value={caption} onChange={(event) => setCaption(event.target.value)} maxLength={240} disabled={saving} className="min-h-20 rounded-xl leading-7" placeholder="The kind of day you wish you could fold up and keep…" />
+            </div>
+            <div className="space-y-2 lg:col-span-2">
+              <Label htmlFor="memory-notes">Notes <span className="font-normal text-muted-foreground">(optional)</span></Label>
+              <Textarea id="memory-notes" value={notes} onChange={(event) => setNotes(event.target.value)} maxLength={2000} disabled={saving} className="min-h-24 rounded-xl leading-7" placeholder="The story behind this moment, or the little details you want to remember." />
             </div>
             <div className="lg:col-span-2">
               <Button className="h-11 rounded-full px-5" type="submit" disabled={saving}>
@@ -130,6 +235,107 @@ export default function Memories() {
               </Button>
             </div>
           </form>
+
+          <form className="mt-7 rounded-2xl border border-border bg-surface-muted/40 p-4 sm:p-5" onSubmit={handleCreateAlbum}>
+            <div className="flex items-start gap-3">
+              <div className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary-soft text-primary-dark">
+                <FolderPlus className="size-4" aria-hidden="true" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold">Create an album</p>
+                <div className="mt-4 grid gap-3 sm:grid-cols-[1fr_1.2fr_auto]">
+                  <Input value={albumName} onChange={(event) => setAlbumName(event.target.value)} placeholder="Weekend away" maxLength={80} disabled={albumsSaving} className="h-10 rounded-xl bg-surface" aria-label="Album name" />
+                  <Input value={albumDescription} onChange={(event) => setAlbumDescription(event.target.value)} placeholder="A tiny collection of moments" maxLength={500} disabled={albumsSaving} className="h-10 rounded-xl bg-surface" aria-label="Album description" />
+                  <Button type="submit" variant="outline" className="h-10 rounded-full bg-surface" disabled={albumsSaving || !albumName.trim()}>
+                    {albumsSaving ? <LoaderCircle className="size-4 animate-spin" aria-hidden="true" /> : <FolderPlus className="size-4" aria-hidden="true" />}
+                    Add
+                  </Button>
+                </div>
+                {albumsError && <p className="mt-3 text-sm text-destructive">{albumsError}</p>}
+              </div>
+            </div>
+          </form>
+
+        </section>
+      )}
+
+      {(albums.length > 0 || albumsLoading) && (
+        <section className="mt-10" aria-labelledby="albums-title">
+          <div className="flex items-end justify-between gap-4 border-b border-border/70 pb-4">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary-dark">Collections</p>
+              <h2 id="albums-title" className="font-display mt-1 text-3xl font-semibold">Albums</h2>
+            </div>
+            <span className="text-sm text-muted-foreground">{albums.length} {albums.length === 1 ? "album" : "albums"}</span>
+          </div>
+          {albumsLoading ? (
+            <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3" aria-busy="true" aria-label="Loading albums">
+              {[1, 2, 3].map((item) => <div key={item} className="aspect-[4/3] animate-pulse rounded-card bg-surface-muted" />)}
+            </div>
+          ) : (
+            <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {albums.map((album) => {
+                const albumMemories = memories.filter((memory) => memory.albumId === album.id);
+                const cover = memories.find((memory) => memory.id === album.coverMemoryId) ?? albumMemories[0];
+                return (
+                  <article key={album.id} className="overflow-hidden rounded-card border border-border bg-surface">
+                    <Link to={`/memories/albums/${album.id}`} className="group block">
+                      <div className="aspect-[4/3] overflow-hidden bg-surface-muted">
+                        {cover ? (
+                          <img src={cover.thumbnailUrl || cover.url} alt={cover.caption || `${album.name} album cover`} loading="lazy" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]" />
+                        ) : (
+                          <div className="grid h-full place-items-center text-muted-foreground"><ImagePlus className="size-8" aria-hidden="true" /></div>
+                        )}
+                      </div>
+                      <div className="flex items-start justify-between gap-3 p-4">
+                        <div className="min-w-0">
+                          <h3 className="truncate text-base font-semibold">{album.name}</h3>
+                          {album.description && <p className="mt-1 line-clamp-2 text-sm leading-5 text-muted-foreground">{album.description}</p>}
+                          <p className="mt-2 text-xs text-muted-foreground">{albumMemories.length} {albumMemories.length === 1 ? "memory" : "memories"}</p>
+                        </div>
+                        <ArrowRight className="mt-1 size-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-1" aria-hidden="true" />
+                      </div>
+                    </Link>
+                    {isOwner && (
+                      <div className="flex items-center justify-end gap-1 border-t border-border px-3 py-2">
+                        <Button type="button" variant="ghost" size="sm" onClick={() => startAlbumEdit(album)} disabled={albumsSaving}>
+                          <Pencil className="size-4" aria-hidden="true" /> Edit
+                        </Button>
+                        <Button type="button" variant="ghost" size="icon" onClick={() => void handleRemoveAlbum(album.id)} disabled={albumsSaving} aria-label={`Remove ${album.name}`}>
+                          <Trash2 className="size-4" aria-hidden="true" />
+                        </Button>
+                      </div>
+                    )}
+                    {editingAlbumId === album.id && (
+                      <form className="space-y-3 border-t border-border p-4" onSubmit={handleSaveAlbum}>
+                        <Label htmlFor={`album-name-${album.id}`}>Album name</Label>
+                        <Input id={`album-name-${album.id}`} value={editingAlbumName} onChange={(event) => setEditingAlbumName(event.target.value)} maxLength={80} disabled={albumsSaving} />
+                        <Label htmlFor={`album-description-${album.id}`}>Description</Label>
+                        <Textarea id={`album-description-${album.id}`} value={editingAlbumDescription} onChange={(event) => setEditingAlbumDescription(event.target.value)} maxLength={500} disabled={albumsSaving} className="min-h-20" />
+                        <Label htmlFor={`album-cover-${album.id}`}>Cover photo</Label>
+                        <Select value={editingAlbumCoverId} onValueChange={setEditingAlbumCoverId} disabled={albumsSaving}>
+                          <SelectTrigger id={`album-cover-${album.id}`}><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">Use first photo</SelectItem>
+                            {albumMemories.map((memory) => (
+                              <SelectItem key={memory.id} value={memory.id}>{memory.caption || displayDate(memory.takenAt) || "Untitled memory"}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <div className="flex justify-end gap-2">
+                          <Button type="button" variant="ghost" onClick={() => setEditingAlbumId(null)} disabled={albumsSaving}><X className="size-4" aria-hidden="true" /> Cancel</Button>
+                          <Button type="submit" disabled={albumsSaving || !editingAlbumName.trim()}>
+                            {albumsSaving && <LoaderCircle className="size-4 animate-spin" aria-hidden="true" />}
+                            Save album
+                          </Button>
+                        </div>
+                      </form>
+                    )}
+                  </article>
+                );
+              })}
+            </div>
+          )}
         </section>
       )}
 
@@ -173,6 +379,9 @@ export default function Memories() {
                 <SelectContent>
                   <SelectItem value="all">All memories</SelectItem>
                   <SelectItem value="favorites">Favorites only</SelectItem>
+                  {albums.map((album) => (
+                    <SelectItem key={album.id} value={album.id}>{album.name}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
               <span className="text-sm text-muted-foreground">{memories.length} {memories.length === 1 ? "memory" : "memories"}</span>
@@ -185,7 +394,9 @@ export default function Memories() {
                 <StaggerItem key={memory.id}>
                   <article className="card-lift group overflow-hidden rounded-card border border-border bg-surface shadow-subtle">
                     <div className="relative aspect-[4/3] overflow-hidden bg-surface-muted">
-                      <img src={memory.thumbnailUrl || memory.url} alt={memory.caption || "A saved Loveline memory"} loading="lazy" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]" />
+                      <button type="button" className="absolute inset-0 size-full cursor-zoom-in" onClick={() => openMemory(memory.id)} aria-label={`View memory${memory.caption ? `: ${memory.caption}` : ""}`}>
+                        <img src={memory.thumbnailUrl || memory.url} alt={memory.caption || "A saved Loveline memory"} loading="lazy" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]" />
+                      </button>
                       {isOwner && (
                         <div className="absolute top-3 right-3 flex flex-col gap-1">
                           <Button
@@ -213,8 +424,22 @@ export default function Memories() {
                     </div>
                     <div className="p-4">
                       {memory.caption && <p className="text-sm leading-6 text-foreground">{memory.caption}</p>}
+                      {memory.notes && <p className="mt-2 line-clamp-2 text-sm leading-6 text-muted-foreground">{memory.notes}</p>}
                       {displayDate(memory.takenAt) && <p className="mt-2 text-xs text-muted-foreground">{displayDate(memory.takenAt)}</p>}
-                      {memory.albumId && <p className="mt-2 text-xs text-muted-foreground">Album</p>}
+                      {memory.albumId && <p className="mt-2 text-xs text-muted-foreground">{albumById.get(memory.albumId)?.name ?? "Album"}</p>}
+                      {isOwner && (
+                        <div className="mt-3">
+                          <Select value={memory.albumId ?? "none"} onValueChange={(value) => void updateAlbum(memory.id, value === "none" ? null : value)} disabled={saving || albumsLoading}>
+                            <SelectTrigger className="h-9 rounded-xl text-xs"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="none">No album</SelectItem>
+                              {albums.map((album) => (
+                                <SelectItem key={album.id} value={album.id}>{album.name}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )}
                     </div>
                   </article>
                 </StaggerItem>
@@ -222,6 +447,31 @@ export default function Memories() {
           </Stagger>
         </section>
       )}
+      <Dialog open={Boolean(selectedMemory)} onOpenChange={(open) => { if (!open) setSelectedMemoryId(null); }}>
+        {selectedMemory && (
+          <DialogContent className="max-h-[92vh] max-w-3xl overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>{selectedMemory.caption || "A little moment"}</DialogTitle>
+              <DialogDescription>
+                {[displayDate(selectedMemory.takenAt), selectedMemory.albumId ? albumById.get(selectedMemory.albumId)?.name : null].filter(Boolean).join(" · ") || "A saved Loveline memory"}
+              </DialogDescription>
+            </DialogHeader>
+            <img src={selectedMemory.url} alt={selectedMemory.caption || "A saved Loveline memory"} className="max-h-[55vh] w-full rounded-lg bg-surface-muted object-contain" />
+            {selectedMemory.caption && <p className="whitespace-pre-wrap text-sm leading-6">{selectedMemory.caption}</p>}
+            {isOwner ? (
+              <div className="space-y-3">
+                <Label htmlFor="memory-detail-notes">Memory notes</Label>
+                <Textarea id="memory-detail-notes" value={editingNotes} onChange={(event) => setEditingNotes(event.target.value)} maxLength={2000} className="min-h-28 leading-6" placeholder="Add the details you want to keep with this memory." />
+                {notesError && <p className="text-sm text-destructive" role="alert">{notesError}</p>}
+                {notesSaved && <p className="text-sm text-success" role="status">Memory notes saved.</p>}
+                <div className="flex justify-end"><Button onClick={() => void handleSaveNotes()} disabled={notesSaving || editingNotes === selectedMemory.notes}>{notesSaving ? <LoaderCircle className="size-4 animate-spin" aria-hidden="true" /> : null}Save notes</Button></div>
+              </div>
+            ) : selectedMemory.notes ? (
+              <div className="space-y-1"><p className="text-sm font-semibold">Notes</p><p className="whitespace-pre-wrap text-sm leading-6 text-muted-foreground">{selectedMemory.notes}</p></div>
+            ) : null}
+          </DialogContent>
+        )}
+      </Dialog>
     </div>
   );
 }

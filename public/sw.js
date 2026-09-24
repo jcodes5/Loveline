@@ -1,6 +1,6 @@
-const CACHE_NAME = "loveline-shell-v3";
-const STATIC_CACHE = "loveline-static-v3";
-const DYNAMIC_CACHE = "loveline-dynamic-v3";
+const CACHE_NAME = "loveline-shell-v4";
+const STATIC_CACHE = "loveline-static-v4";
+const DYNAMIC_CACHE = "loveline-dynamic-v4";
 
 // Assets to cache on install
 const APP_SHELL = [
@@ -72,6 +72,11 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
+  // Private and user-uploaded images must always be fetched from the network.
+  if (request.destination === "image" || /\.(avif|bmp|gif|heic|jpe?g|png|svg|tiff?|webp|ico)$/i.test(url.pathname)) {
+    return;
+  }
+
   // Navigation requests - network first, fallback to cache
   if (request.mode === "navigate") {
     event.respondWith(
@@ -94,19 +99,17 @@ self.addEventListener("fetch", (event) => {
   if (
     request.destination === "script" ||
     request.destination === "style" ||
-    request.destination === "image" ||
     request.destination === "font" ||
     url.pathname.endsWith(".js") ||
     url.pathname.endsWith(".css") ||
-    url.pathname.endsWith(".png") ||
-    url.pathname.endsWith(".svg") ||
-    url.pathname.endsWith(".ico")
+    url.pathname.endsWith(".woff") ||
+    url.pathname.endsWith(".woff2")
   ) {
     event.respondWith(
       caches.open(STATIC_CACHE).then(async (cache) => {
         const cached = await cache.match(request);
         const fetchPromise = fetch(request).then((response) => {
-          if (response.ok) {
+          if (response.ok && response.type === "basic") {
             cache.put(request, response.clone());
           }
           return response;
@@ -121,7 +124,7 @@ self.addEventListener("fetch", (event) => {
   event.respondWith(
     fetch(request)
       .then((response) => {
-        if (response.ok) {
+        if (response.ok && response.type === "basic") {
           const copy = response.clone();
           caches.open(DYNAMIC_CACHE).then((cache) => cache.put(request, copy));
         }

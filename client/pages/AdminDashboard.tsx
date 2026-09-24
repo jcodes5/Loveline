@@ -7,12 +7,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRelationship } from "@/contexts/RelationshipContext";
-import { supabase } from "@/lib/supabase";
+import { useProfileNames } from "@/contexts/ProfileNamesContext";
+import { useTimeGreeting } from "@/hooks/use-time-greeting";
 
 interface AdminSummary {
   dailyContent: {
     today: boolean;
     upcoming: number;
+    pendingReview: number;
   };
   messages: {
     scheduled: number;
@@ -21,84 +23,70 @@ interface AdminSummary {
   memories: {
     thisWeek: number;
     total: number;
+    recent: Array<{
+      id: string;
+      caption: string;
+      takenAt: string | null;
+      createdAt: string;
+    }>;
   };
   aiUsage: {
     tokensToday: number;
     tokensThisMonth: number;
+    failuresToday: number;
+    failuresThisMonth: number;
+    latestStatus: "success" | "error" | null;
+    latestType: string | null;
+    latestAt: string | null;
+    recentFailures: Array<{ type: string; createdAt: string }>;
+  };
+  notifications: {
+    enabledDevices: number;
+    totalDevices: number;
+    lastDeviceSeenAt: string | null;
+    deliveriesThisWeek: number;
+    latestDelivery: { category: string; deliveredAt: string } | null;
   };
 }
 
+function formatStatusDate(value: string | null) {
+  if (!value) return "No activity yet";
+  return new Intl.DateTimeFormat(undefined, {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(new Date(value));
+}
+
 export default function AdminDashboard() {
-  const { user } = useAuth();
+  const greeting = useTimeGreeting();
+  const { displayName } = useProfileNames();
+  const { session } = useAuth();
   const { relationship } = useRelationship();
   const [summary, setSummary] = useState<AdminSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const fetchSummary = async () => {
-    if (!user || !relationship || !supabase) return;
+    if (!session?.access_token || !relationship) {
+      setSummary(null);
+      setLoading(false);
+      return;
+    }
 
     try {
       setLoading(true);
       setError(null);
 
-      const today = new Date().toISOString().split("T")[0];
-      const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
-
-      const [
-        dailyContentResult,
-        messagesResult,
-        memoriesResult,
-      ] = await Promise.all([
-        supabase
-          .from("daily_content")
-          .select("content_date", { count: "exact" })
-          .eq("relationship_id", relationship.id)
-          .gte("content_date", today),
-        supabase
-          .from("personal_messages")
-          .select("status, scheduled_for", { count: "exact" })
-          .eq("relationship_id", relationship.id)
-          .in("status", ["scheduled", "published"]),
-        supabase
-          .from("memories")
-          .select("created_at", { count: "exact" })
-          .eq("relationship_id", relationship.id)
-          .gte("created_at", weekAgo),
-      ]);
-
-      const dailyContentToday = dailyContentResult.data?.some((d) => d.content_date === today) ?? false;
-      const dailyContentUpcoming = (dailyContentResult.count ?? 0) - (dailyContentToday ? 1 : 0);
-
-      const scheduledMessages = messagesResult.data?.filter((m) => m.status === "scheduled").length ?? 0;
-      const publishedMessages = messagesResult.data?.filter((m) => m.status === "published").length ?? 0;
-
-      const memoriesThisWeek = memoriesResult.count ?? 0;
-
-      const { count: totalMemories } = await supabase
-        .from("memories")
-        .select("*", { count: "exact", head: true })
-        .eq("relationship_id", relationship.id);
-
-      setSummary({
-        dailyContent: {
-          today: dailyContentToday,
-          upcoming: Math.max(0, dailyContentUpcoming),
-        },
-        messages: {
-          scheduled: scheduledMessages,
-          published: publishedMessages,
-        },
-        memories: {
-          thisWeek: memoriesThisWeek,
-          total: totalMemories ?? 0,
-        },
-        aiUsage: {
-          tokensToday: 0,
-          tokensThisMonth: 0,
-        },
-      });
+      const response = await fetch(
+        `/api/admin/summary?relationshipId=${encodeURIComponent(relationship.id)}`,
+        { headers: { Authorization: `Bearer ${session.access_token}` } },
+      );
+      if (!response.ok) {
+        throw new Error("Dashboard summary request failed.");
+      }
+      setSummary(await response.json() as AdminSummary);
     } catch (err) {
+      setSummary(null);
       setError("Failed to load dashboard. Please try again.");
       console.error("Admin dashboard error:", err);
     } finally {
@@ -108,16 +96,22 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     fetchSummary();
-  }, [user, relationship]);
+  }, [session, relationship]);
 
   const statCards = summary ? [
     {
       title: "Today's Daily Content",
       value: summary.dailyContent.today ? "Ready" : "Not set",
-      description: summary.dailyContent.upcoming > 0 ? `${summary.dailyContent.upcoming} upcoming` : "No upcoming content",
+      description: [
+        summary.dailyContent.upcoming > 0 ? `${summary.dailyContent.upcoming} upcoming` : null,
+        summary.dailyContent.pendingReview > 0 ? `${summary.dailyContent.pendingReview} awaiting review` : null,
+      ].filter(Boolean).join(" · ") || "No upcoming content",
       icon: CalendarDays,
       color: "bg-primary-soft text-primary",
-      action: summary.dailyContent.today ? null : { label: "Create today", href: "/admin/daily-content" },
+      action: summary.dailyContent.today ? null : {
+        label: summary.dailyContent.pendingReview > 0 ? "Review content" : "Create today",
+        href: "/admin/daily-content",
+      },
     },
     {
       title: "Scheduled Messages",
@@ -153,7 +147,7 @@ export default function AdminDashboard() {
             Back to Loveline
           </Link>
           <p className="mt-8 text-xs font-semibold uppercase tracking-[0.18em] text-primary-dark">Owner space / Dashboard</p>
-          <h1 className="font-display mt-2 text-4xl font-semibold tracking-[-0.04em] sm:text-5xl">Good morning. Here&apos;s your space.</h1>
+          <h1 className="font-display mt-2 text-4xl font-semibold tracking-[-0.04em] sm:text-5xl">{greeting}, {displayName || "love"}. Here&apos;s your space.</h1>
           <p className="mt-4 max-w-xl text-base leading-7 text-muted-foreground">A quick glance at what&apos;s happening in your Loveline.</p>
         </div>
         <Button variant="outline" className="h-11 rounded-full" onClick={fetchSummary}>
@@ -253,6 +247,90 @@ export default function AdminDashboard() {
             </div>
           </section>
 
+          <section className="mt-12 grid gap-6 lg:grid-cols-2" aria-label="Recent activity and delivery health">
+            <Card className="border-border/50">
+              <CardHeader className="flex flex-row items-center justify-between gap-3">
+                <CardTitle>Recent memories</CardTitle>
+                <Button asChild variant="ghost" size="sm" className="rounded-full">
+                  <Link to="/memories">View all <ArrowRight className="ml-1 size-3.5" aria-hidden="true" /></Link>
+                </Button>
+              </CardHeader>
+              <CardContent>
+                {summary.memories.recent.length ? (
+                  <ul className="divide-y divide-border/70">
+                    {summary.memories.recent.map((memory) => (
+                      <li key={memory.id} className="flex items-center justify-between gap-4 py-3 first:pt-0 last:pb-0">
+                        <span className="min-w-0 truncate text-sm font-medium">
+                          {memory.caption.trim() || "A saved memory"}
+                        </span>
+                        <time className="shrink-0 text-xs text-muted-foreground" dateTime={memory.createdAt}>
+                          {formatStatusDate(memory.takenAt ? `${memory.takenAt}T12:00:00` : memory.createdAt)}
+                        </time>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-sm text-muted-foreground">No memories have been added yet.</p>
+                )}
+              </CardContent>
+            </Card>
+
+            <div className="space-y-6">
+              <Card className="border-border/50">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2"><Bell className="size-4" aria-hidden="true" />Push delivery</CardTitle>
+                </CardHeader>
+                <CardContent className="grid gap-3 text-sm sm:grid-cols-2">
+                  <div>
+                    <p className="text-muted-foreground">Enabled devices</p>
+                    <p className="mt-1 font-semibold">{summary.notifications.enabledDevices} / {summary.notifications.totalDevices}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Recent deliveries</p>
+                    <p className="mt-1 font-semibold">{summary.notifications.deliveriesThisWeek} in the past 7 days</p>
+                  </div>
+                  <p className="text-xs text-muted-foreground sm:col-span-2">
+                    Last delivered: {summary.notifications.latestDelivery
+                      ? `${summary.notifications.latestDelivery.category.replace(/_/g, " ")} · ${formatStatusDate(summary.notifications.latestDelivery.deliveredAt)}`
+                      : "No successful push deliveries recorded"}
+                  </p>
+                  <p className="text-xs text-muted-foreground sm:col-span-2">
+                    Last device activity: {formatStatusDate(summary.notifications.lastDeviceSeenAt)}
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card className="border-border/50">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2"><Bot className="size-4" aria-hidden="true" />AI generation status</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3 text-sm">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="text-muted-foreground">
+                      Latest: {summary.aiUsage.latestStatus
+                        ? `${summary.aiUsage.latestType ?? "Generation"} · ${summary.aiUsage.latestStatus}`
+                        : "No generations this month"}
+                    </span>
+                    <span className={summary.aiUsage.failuresToday ? "font-semibold text-destructive" : "font-semibold text-success"}>
+                      {summary.aiUsage.failuresToday} failed today
+                    </span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">{summary.aiUsage.failuresThisMonth} failures this month</p>
+                  {summary.aiUsage.recentFailures.length > 0 && (
+                    <ul className="space-y-1 border-t border-border/70 pt-2 text-xs text-muted-foreground">
+                      {summary.aiUsage.recentFailures.slice(0, 3).map((failure, index) => (
+                        <li key={`${failure.createdAt}-${index}`} className="flex justify-between gap-3">
+                          <span>{failure.type}</span>
+                          <time dateTime={failure.createdAt}>{formatStatusDate(failure.createdAt)}</time>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          </section>
+
           <section className="mt-12" aria-labelledby="upcoming-title">
             <div className="flex items-center justify-between gap-4">
               <h2 id="upcoming-title" className="text-xs font-semibold uppercase tracking-[0.18em] text-primary-dark">Upcoming this week</h2>
@@ -263,7 +341,7 @@ export default function AdminDashboard() {
                   <CardTitle className="flex items-center gap-2"><Bell className="size-4" aria-hidden="true" />Notifications</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-sm text-muted-foreground">Next scheduled: Daily reminders at 06:00 UTC</p>
+                  <p className="text-sm text-muted-foreground">Reminder checks run hourly using your local notification preferences.</p>
                   <Button asChild variant="ghost" className="mt-3 w-full h-10 rounded-full">
                     <Link to="/settings/notifications">Manage preferences</Link>
                   </Button>

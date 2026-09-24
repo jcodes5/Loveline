@@ -1,8 +1,11 @@
 import { Router, type Request } from "express";
+import { randomUUID } from "node:crypto";
+import { v2 as cloudinary } from "cloudinary";
 import { z } from "zod";
 
 import { createClient } from "@supabase/supabase-js";
 import { renderQuoteCardSvg, renderQuoteCardPng, type QuoteCardPalette, type QuoteCardTemplate, type QuoteCardBgType, type ArtisanalGradientKey, type QuoteCardAlignment } from "../quote-cards";
+import { allowRequest } from "../rate-limit";
 
 const paletteSchema = z.enum(["rose", "dusk", "honey"]);
 const templateSchema = z.enum(["minimal", "romantic", "editorial", "polaroid", "night", "sunrise", "memory", "letterpress"]);
@@ -28,7 +31,7 @@ const renderSchema = quoteCardSchema.extend({
   dateLabel: z.string().trim().max(80).optional(),
 });
 
-const quoteCardSelect = "id, relationship_id, created_by, quote_text, quote_author, quote_source, palette, template, bg_type, gradient, background_data_url, alignment, show_date, created_at";
+const quoteCardSelect = "id, relationship_id, created_by, quote_text, quote_author, quote_source, palette, template, bg_type, gradient, background_data_url, alignment, show_date, rendered_public_id, rendered_format, created_at";
 
 type QuoteCardRow = {
   id: string;
@@ -44,8 +47,39 @@ type QuoteCardRow = {
   background_data_url: string | null;
   alignment: QuoteCardAlignment;
   show_date: boolean;
+  rendered_public_id: string | null;
+  rendered_format: string | null;
   created_at: string;
 };
+
+function configureCloudinary() {
+  const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
+  const apiKey = process.env.CLOUDINARY_API_KEY;
+  const apiSecret = process.env.CLOUDINARY_API_SECRET;
+  if (!cloudName || !apiKey || !apiSecret) {
+    throw new Error("Quote card image storage is not configured.");
+  }
+  cloudinary.config({ cloud_name: cloudName, api_key: apiKey, api_secret: apiSecret, secure: true });
+  return cloudinary;
+}
+
+function signedCardImageUrl(publicId: string, format: string) {
+  return configureCloudinary().url(publicId, {
+    resource_type: "image",
+    type: "authenticated",
+    secure: true,
+    sign_url: true,
+    format,
+  });
+}
+
+async function destroyCardAsset(publicId: string) {
+  await configureCloudinary().uploader.destroy(publicId, {
+    resource_type: "image",
+    type: "authenticated",
+    invalidate: true,
+  });
+}
 
 function getSupabaseForRequest(request: Request) {
   const supabaseUrl = process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL;
@@ -103,6 +137,9 @@ async function mapQuoteCard(value: QuoteCardRow) {
     alignment: value.alignment,
     showDate: value.show_date,
     createdAt: value.created_at,
+    imageUrl: value.rendered_public_id && value.rendered_format
+      ? signedCardImageUrl(value.rendered_public_id, value.rendered_format)
+      : null,
     svg,
   };
 }
@@ -149,6 +186,8 @@ export function createQuoteCardRouter() {
         return;
       }
 
+      if (!(await allowRequest(supabase, response, "quote_render"))) return;
+
       const { data, error } = await supabase
         .from("quote_cards")
         .select(quoteCardSelect)
@@ -183,6 +222,44 @@ export function createQuoteCardRouter() {
         return;
       }
 
+      if (!(await allowRequest(supabase, response, "quote_render"))) return;
+
+      const { data: membership, error: membershipError } = await supabase
+        .from("relationship_members")
+        .select("relationship_id")
+        .eq("relationship_id", parsed.data.relationshipId)
+        .eq("user_id", userId)
+        .maybeSingle();
+      if (membershipError || !membership) {
+        response.status(403).json({ error: "Both partners join your Loveline before saving quote cards." });
+        return;
+      }
+
+      const png = await renderQuoteCardPng({
+        quoteText: parsed.data.quoteText,
+        quoteAuthor: parsed.data.quoteAuthor,
+        quoteSource: parsed.data.quoteSource,
+        palette: parsed.data.palette,
+        template: parsed.data.template,
+        bgType: parsed.data.bgType,
+        gradient: parsed.data.gradient,
+        backgroundDataUrl: parsed.data.backgroundDataUrl,
+        alignment: parsed.data.alignment,
+        showDate: parsed.data.showDate,
+        dateLabel: formatDate(parsed.data.showDate),
+      });
+      const cloud = configureCloudinary();
+      const asset = await cloud.uploader.upload(
+        `data:image/png;base64,${png.toString("base64")}`,
+        {
+          resource_type: "image",
+          type: "authenticated",
+          folder: "loveline/quote-cards",
+          public_id: `${parsed.data.relationshipId}/${randomUUID()}`,
+          overwrite: false,
+        },
+      );
+
       const { data, error } = await supabase
         .from("quote_cards")
         .insert({
@@ -198,11 +275,16 @@ export function createQuoteCardRouter() {
           background_data_url: parsed.data.backgroundDataUrl ?? null,
           alignment: parsed.data.alignment,
           show_date: parsed.data.showDate,
+          rendered_public_id: asset.public_id,
+          rendered_format: asset.format,
         })
         .select(quoteCardSelect)
         .single();
 
       if (error || !data) {
+        await destroyCardAsset(asset.public_id).catch((cleanupError) => {
+          console.error("Quote card asset cleanup failed:", cleanupError);
+        });
         response.status(500).json({ error: "We couldn't save that quote card right now." });
         return;
       }
@@ -228,9 +310,11 @@ export function createQuoteCardRouter() {
         return;
       }
 
+      if (!(await allowRequest(supabase, response, "quote_render"))) return;
+
       const { data: membership, error: membershipError } = await supabase
         .from("relationship_members")
-        .select("id")
+        .select("relationship_id")
         .eq("relationship_id", parsed.data.relationshipId)
         .eq("user_id", userId)
         .maybeSingle();
@@ -270,10 +354,26 @@ export function createQuoteCardRouter() {
       }
       const { supabase } = auth;
 
+      const { data: card, error: lookupError } = await supabase
+        .from("quote_cards")
+        .select("rendered_public_id")
+        .eq("id", request.params.id)
+        .maybeSingle();
+      if (lookupError) {
+        response.status(500).json({ error: "We couldn't remove that quote card right now." });
+        return;
+      }
+
       const { error } = await supabase.from("quote_cards").delete().eq("id", request.params.id);
       if (error) {
         response.status(500).json({ error: "We couldn't remove that quote card right now." });
         return;
+      }
+
+      if (card?.rendered_public_id) {
+        await destroyCardAsset(card.rendered_public_id).catch((cleanupError) => {
+          console.error("Removed quote card image cleanup failed:", cleanupError);
+        });
       }
 
       response.status(204).send();

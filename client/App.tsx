@@ -13,6 +13,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { RelationshipProvider } from "@/contexts/RelationshipContext";
+import { ProfileNamesProvider } from "@/contexts/ProfileNamesContext";
 import { registerServiceWorker } from "@/lib/register-service-worker";
 import { listenForForegroundNotifications, checkForSWUpdate, applySWUpdate } from "@/lib/firebase-messaging";
 import { toast } from "sonner";
@@ -25,6 +26,7 @@ const DailyContentWorkspace = lazy(() => import("@/pages/DailyContentWorkspace")
 const Discover = lazy(() => import("@/pages/Discover"));
 const Index = lazy(() => import("@/pages/Index"));
 const Memories = lazy(() => import("@/pages/Memories"));
+const MemoryAlbum = lazy(() => import("@/pages/MemoryAlbum"));
 const Messages = lazy(() => import("@/pages/Messages"));
 const MessageWorkspace = lazy(() => import("@/pages/MessageWorkspace"));
 const MoodHistory = lazy(() => import("@/pages/MoodHistory"));
@@ -100,6 +102,7 @@ const App = () => (
       <Sonner />
       <AuthProvider>
         <RelationshipProvider>
+          <ProfileNamesProvider>
           <ForegroundNotificationListener />
           <SWUpdatePrompt />
           <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
@@ -121,6 +124,7 @@ const App = () => (
                     <Route path="/" element={<Index />} />
                     <Route path="/discover" element={<Discover />} />
                     <Route path="/memories" element={<Memories />} />
+                    <Route path="/memories/albums/:albumId" element={<MemoryAlbum />} />
                     <Route path="/messages" element={<Messages />} />
                     <Route path="/create" element={<Create />} />
                     <Route path="/settings/notifications" element={<NotificationPreferences />} />
@@ -134,6 +138,7 @@ const App = () => (
               </Routes>
             </Suspense>
           </BrowserRouter>
+          </ProfileNamesProvider>
         </RelationshipProvider>
       </AuthProvider>
     </TooltipProvider>

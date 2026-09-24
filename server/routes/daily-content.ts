@@ -2,6 +2,7 @@ import { Router, type Request } from "express";
 import { z } from "zod";
 
 import { createClient } from "@supabase/supabase-js";
+import { allowRequest } from "../rate-limit";
 
 const draftRequestSchema = z.object({
   relationshipId: z.string().uuid("A relationship is required."),
@@ -141,6 +142,8 @@ export function createDailyContentRouter() {
         response.status(403).json({ error: "Only the Loveline owner can draft daily content." });
         return;
       }
+
+      if (!(await allowRequest(auth.supabase, response, "ai_draft"))) return;
 
       const draft = await generateDraft(parsed.data.contentDate, parsed.data.prompt);
       response.json({ draft });

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ArrowLeft, CalendarHeart, Check, ClipboardCopy, Clock3, Globe, Heart, Link2, LoaderCircle, MapPin, MessagesSquare, Pencil, Plus, RefreshCw, Sparkles, Trash2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { z } from "zod";
@@ -13,6 +13,7 @@ import { AnimatedNumber } from "@/components/motion/AnimatedNumber";
 import { Reveal, Stagger, StaggerItem } from "@/components/motion/Reveal";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRelationship } from "@/contexts/RelationshipContext";
+import { useProfileNames } from "@/contexts/ProfileNamesContext";
 import { useInvitation } from "@/hooks/use-invitation";
 import { useSpecialDates, type SpecialDate, type SpecialDateKind, type SpecialDateRecurrence, type SpecialDateTheme } from "@/hooks/use-special-dates";
 
@@ -89,6 +90,7 @@ function formatDate(value: string) {
 export default function More() {
   const { user } = useAuth();
   const { relationship } = useRelationship();
+  const { displayName, partnerDisplayName, saveDisplayName } = useProfileNames();
   const { dates, daysTogether, loading, saving, error, refresh, saveDate, removeDate } = useSpecialDates();
   const invitation = useInvitation();
   const [form, setForm] = useState<FormState>(blankForm);
@@ -96,6 +98,20 @@ export default function More() {
   const [savedMessage, setSavedMessage] = useState<string | null>(null);
   const isOwner = Boolean(user && relationship?.ownerId === user.id);
   const [copied, setCopied] = useState(false);
+  const [nameDraft, setNameDraft] = useState(displayName);
+  const [nameSaving, setNameSaving] = useState(false);
+  const [nameMessage, setNameMessage] = useState<string | null>(null);
+
+  useEffect(() => setNameDraft(displayName), [displayName]);
+
+  async function handleSaveName(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setNameSaving(true);
+    setNameMessage(null);
+    const error = await saveDisplayName(nameDraft);
+    setNameSaving(false);
+    setNameMessage(error?.message ?? "Your name has been updated across Loveline.");
+  }
 
   async function copyInviteLink() {
     if (!invitation.link) return;
@@ -167,6 +183,23 @@ export default function More() {
         <h1 className="font-display mt-2 text-5xl font-semibold leading-[0.95] tracking-[-0.04em] sm:text-6xl">Everything that makes it yours.</h1>
         <p className="mt-5 max-w-xl text-base leading-7 text-muted-foreground">Keep the dates that make your relationship feel like a place.</p>
       </header>
+
+      <section className="mt-8 border-b border-border/70 pb-8" aria-labelledby="display-name-title">
+        <div className="max-w-2xl">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary-dark">Your profile</p>
+          <h2 id="display-name-title" className="font-display mt-2 text-2xl font-semibold">Your name in Loveline</h2>
+          <p className="mt-2 text-sm leading-6 text-muted-foreground">Choose what you and your partner see around your shared space.</p>
+          <form className="mt-4 flex flex-col gap-3 sm:flex-row" onSubmit={handleSaveName}>
+            <Input value={nameDraft} onChange={(event) => setNameDraft(event.target.value)} maxLength={120} required aria-label="Your name in Loveline" placeholder="Your name" disabled={nameSaving} className="h-11 max-w-md rounded-xl" />
+            <Button type="submit" disabled={nameSaving || !nameDraft.trim() || nameDraft.trim() === displayName} className="h-11 rounded-full">
+              {nameSaving ? <LoaderCircle className="size-4 animate-spin" aria-hidden="true" /> : <Check className="size-4" aria-hidden="true" />}
+              Save name
+            </Button>
+          </form>
+          {nameMessage && <p className={`mt-2 text-sm ${nameMessage.startsWith("We couldn't") ? "text-destructive" : "text-muted-foreground"}`} role="status">{nameMessage}</p>}
+          {partnerDisplayName && <p className="mt-3 text-xs text-muted-foreground">Your partner appears as {partnerDisplayName}.</p>}
+        </div>
+      </section>
 
       <Reveal className="mt-8" delay={0.05}>
         <section className="overflow-hidden rounded-card bg-[#30242a] p-6 text-[#fff8f6] shadow-card sm:p-8" aria-labelledby="days-together-title">

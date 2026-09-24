@@ -17,6 +17,7 @@ describe("daily content workspace", () => {
         quote_text: "Stay close to what matters.",
         quote_author: "Loveline",
         quote_source: null,
+        approval_status: "pending",
       }),
     ).toEqual({
       id: "content-1",
@@ -30,6 +31,7 @@ describe("daily content workspace", () => {
       quoteText: "Stay close to what matters.",
       quoteAuthor: "Loveline",
       quoteSource: null,
+      approvalStatus: "pending",
     });
   });
 });

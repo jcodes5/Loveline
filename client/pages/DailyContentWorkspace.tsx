@@ -1,9 +1,10 @@
 import { useState } from "react";
-import { ArrowLeft, CalendarDays, Check, FileText, Heart, Plus, RefreshCw, Sparkles } from "lucide-react";
+import { ArrowLeft, CalendarDays, Check, FileText, Heart, Plus, RefreshCw, Sparkles, X } from "lucide-react";
 import { Link } from "react-router-dom";
 import { z } from "zod";
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -47,6 +48,7 @@ const blankForm: FormState = {
   quoteText: "",
   quoteAuthor: "",
   quoteSource: "",
+  approvalStatus: "approved",
 };
 
 function displayDate(value: string) {
@@ -72,11 +74,12 @@ function toFormState(content: DailyContent): FormState {
     quoteText: content.quoteText,
     quoteAuthor: content.quoteAuthor,
     quoteSource: content.quoteSource ?? "",
+    approvalStatus: content.approvalStatus,
   };
 }
 
 export default function DailyContentWorkspace() {
-  const { entries, loading, saving, drafting, error, refresh, saveContent, draftContent } = useDailyContentWorkspace();
+  const { entries, loading, saving, drafting, error, refresh, saveContent, reviewContent, draftContent } = useDailyContentWorkspace();
   const [form, setForm] = useState<FormState>(blankForm);
   const [draftPrompt, setDraftPrompt] = useState("Make this feel like a gentle, ordinary day worth noticing.");
   const [formError, setFormError] = useState<string | null>(null);
@@ -112,8 +115,8 @@ export default function DailyContentWorkspace() {
       return;
     }
 
-    setForm((current) => ({ ...current, ...response.draft }));
-    setSavedMessage("A draft is ready for your edits. Nothing has been saved yet.");
+    setForm((current) => ({ ...current, ...response.draft, approvalStatus: "pending" }));
+    setSavedMessage("A draft is ready for your edits. Saving it will keep it private until you approve it.");
   }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -132,6 +135,7 @@ export default function DailyContentWorkspace() {
       id: form.id,
       ...result.data,
       quoteSource: result.data.quoteSource || null,
+      approvalStatus: form.approvalStatus,
     });
 
     if (response.error) {
@@ -142,7 +146,22 @@ export default function DailyContentWorkspace() {
     if (response.content) {
       setForm(toFormState(response.content));
     }
-    setSavedMessage("Daily content saved for this date.");
+    setSavedMessage(response.content?.approvalStatus === "pending"
+      ? "Saved as a private draft. Approve it when it is ready to appear."
+      : "Daily content saved for this date.");
+  }
+
+  async function handleReview(content: DailyContent, approvalStatus: "approved" | "rejected") {
+    setFormError(null);
+    const result = await reviewContent(content.id, approvalStatus);
+    if (result.error) {
+      setFormError(result.error.message);
+      return;
+    }
+    setForm((current) => current.id === content.id ? { ...current, approvalStatus } : current);
+    setSavedMessage(approvalStatus === "approved"
+      ? "Daily content approved and available to your partner."
+      : "Draft rejected. It will stay out of Home and reminders.");
   }
 
   return (
@@ -197,19 +216,33 @@ export default function DailyContentWorkspace() {
           {!loading && entries.length > 0 && (
             <div className="mt-5 space-y-2">
               {entries.map((entry) => (
-                <button
-                  type="button"
+                <article
                   key={entry.id}
-                  onClick={() => editContent(entry)}
-                  className={`w-full rounded-2xl border p-4 text-left transition-colors ${form.id === entry.id ? "border-primary/40 bg-primary-soft/30" : "border-border hover:bg-surface-muted"}`}
+                  className={`rounded-2xl border p-4 transition-colors ${form.id === entry.id ? "border-primary/40 bg-primary-soft/30" : "border-border hover:bg-surface-muted"}`}
                 >
-                  <div className="flex items-start justify-between gap-3">
-                    <span className="truncate font-semibold">{entry.heroTitle}</span>
-                    <CalendarDays className="size-4 shrink-0 text-primary" aria-hidden="true" />
-                  </div>
-                  <p className="mt-2 text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">{displayDate(entry.contentDate)}</p>
-                  <p className="mt-2 line-clamp-2 text-sm leading-6 text-muted-foreground">{entry.heroBody}</p>
-                </button>
+                  <button type="button" onClick={() => editContent(entry)} className="w-full text-left">
+                    <div className="flex items-start justify-between gap-3">
+                      <span className="min-w-0 truncate font-semibold">{entry.heroTitle}</span>
+                      <Badge variant={entry.approvalStatus === "approved" ? "default" : "secondary"}>
+                        {entry.approvalStatus === "pending" ? "Pending review" : entry.approvalStatus === "rejected" ? "Rejected" : "Approved"}
+                      </Badge>
+                    </div>
+                    <p className="mt-2 text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">{displayDate(entry.contentDate)}</p>
+                    <p className="mt-2 line-clamp-2 text-sm leading-6 text-muted-foreground">{entry.heroBody}</p>
+                  </button>
+                  {entry.approvalStatus !== "approved" && (
+                    <div className="mt-3 flex justify-end gap-2 border-t border-border/70 pt-3">
+                      {entry.approvalStatus === "pending" && (
+                        <Button type="button" variant="ghost" size="sm" className="h-9 rounded-full text-muted-foreground" onClick={() => void handleReview(entry, "rejected")} disabled={saving}>
+                          <X className="size-4" aria-hidden="true" /> Reject
+                        </Button>
+                      )}
+                      <Button type="button" size="sm" className="h-9 rounded-full" onClick={() => void handleReview(entry, "approved")} disabled={saving}>
+                        <Check className="size-4" aria-hidden="true" /> Approve
+                      </Button>
+                    </div>
+                  )}
+                </article>
               ))}
             </div>
           )}
@@ -223,6 +256,14 @@ export default function DailyContentWorkspace() {
             </div>
             <div className="grid size-11 place-items-center rounded-2xl bg-primary-soft text-primary-dark"><FileText className="size-5" aria-hidden="true" /></div>
           </div>
+
+          {form.approvalStatus !== "approved" && (
+            <p className="mt-3 text-sm text-muted-foreground" role="status">
+              {form.approvalStatus === "pending"
+                ? "This draft is private until you approve it."
+                : "This content was rejected and is not visible to your partner."}
+            </p>
+          )}
 
           {formError && <Alert variant="destructive" className="mt-6"><AlertDescription>{formError}</AlertDescription></Alert>}
           {savedMessage && <Alert className="mt-6 border-success/25 bg-success/10"><Check className="size-4 text-success" aria-hidden="true" /><AlertDescription>{savedMessage}</AlertDescription></Alert>}

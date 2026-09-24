@@ -5,6 +5,7 @@ import { AnimatedNumber } from "@/components/motion/AnimatedNumber";
 import { HeartBeat } from "@/components/motion/HeartBeat";
 import { Reveal, Stagger, StaggerItem } from "@/components/motion/Reveal";
 import { useAuth } from "@/contexts/AuthContext";
+import { useProfileNames } from "@/contexts/ProfileNamesContext";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { useTimeline, type TimelineItem } from "@/hooks/use-timeline";
@@ -37,6 +38,7 @@ function formatTimestamp(value: string) {
 
 export default function Timeline() {
   const { user } = useAuth();
+  const { partnerDisplayName } = useProfileNames();
   const { items, daysTogether, loading, error, refresh } = useTimeline();
 
   function TimelineEntry({ item }: { item: TimelineItem }) {
@@ -96,7 +98,7 @@ export default function Timeline() {
           </div>
           <div className="min-w-0">
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#efb0be]">
-              {sentByMe ? "You sent this" : "A little love from your partner"}
+              {sentByMe ? "You sent this" : `A little love from ${partnerDisplayName || "your partner"}`}
             </p>
             <h2 className="font-display mt-2 text-2xl font-semibold leading-tight tracking-[-0.03em]">
               {sentByMe ? "You sent a heart." : "A heart came your way."}

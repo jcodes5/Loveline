@@ -19,6 +19,7 @@ const baseMemory = {
   height: 900,
   bytes: 1000,
   caption: "A rainy afternoon",
+  notes: "",
   takenAt: "2025-04-02",
   createdAt: "2025-04-02T12:00:00.000Z",
   albumId: null,

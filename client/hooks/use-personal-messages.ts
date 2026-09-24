@@ -21,6 +21,18 @@ export type PersonalMessage = {
   updatedAt: string;
 };
 
+export type PersonalMessageRevision = {
+  id: string;
+  title: string;
+  body: string;
+  messageType: PersonalMessageType;
+  status: PersonalMessageStatus;
+  scheduledFor: string | null;
+  publishedAt: string | null;
+  versionUpdatedAt: string;
+  changedAt: string;
+};
+
 export type PersonalMessageInput = {
   id?: string;
   title: string;
@@ -36,8 +48,14 @@ type PersonalMessagesState = {
   loading: boolean;
   error: string | null;
   saving: boolean;
+  revisions: PersonalMessageRevision[];
+  revisionsLoading: boolean;
+  revisionsError: string | null;
   refresh: () => Promise<void>;
+  refreshRevisions: (messageId: string) => Promise<void>;
   saveMessage: (input: PersonalMessageInput) => Promise<{ error: Error | null }>;
+  archiveMessage: (id: string) => Promise<{ error: Error | null }>;
+  restoreMessage: (id: string) => Promise<{ error: Error | null }>;
 };
 
 function mapMessage(value: {
@@ -68,6 +86,8 @@ function mapMessage(value: {
 
 const messageSelect =
   "id, title, body, message_type, status, scheduled_for, published_at, special_date_id, created_at, updated_at";
+const revisionSelect =
+  "id, title, body, message_type, status, scheduled_for, published_at, version_updated_at, changed_at";
 
 export function useLatestPersonalMessage() {
   const { relationship } = useRelationship();
@@ -131,6 +151,9 @@ export function usePersonalMessages(): PersonalMessagesState {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [revisions, setRevisions] = useState<PersonalMessageRevision[]>([]);
+  const [revisionsLoading, setRevisionsLoading] = useState(false);
+  const [revisionsError, setRevisionsError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     if (!relationship || !supabase) {
@@ -159,6 +182,41 @@ export function usePersonalMessages(): PersonalMessagesState {
   useEffect(() => {
     void refresh();
   }, [refresh]);
+
+  const refreshRevisions = useCallback(async (messageId: string) => {
+    if (!relationship || !supabase) {
+      setRevisions([]);
+      return;
+    }
+
+    setRevisionsLoading(true);
+    setRevisionsError(null);
+    const { data, error: queryError } = await supabase
+      .from("personal_message_revisions")
+      .select(revisionSelect)
+      .eq("relationship_id", relationship.id)
+      .eq("message_id", messageId)
+      .order("changed_at", { ascending: false })
+      .limit(20);
+
+    if (queryError) {
+      setRevisions([]);
+      setRevisionsError("We couldn't load this message's version history.");
+    } else {
+      setRevisions((data ?? []).map((row) => ({
+        id: row.id,
+        title: row.title,
+        body: row.body,
+        messageType: row.message_type as PersonalMessageType,
+        status: row.status as PersonalMessageStatus,
+        scheduledFor: row.scheduled_for,
+        publishedAt: row.published_at,
+        versionUpdatedAt: row.version_updated_at,
+        changedAt: row.changed_at,
+      })));
+    }
+    setRevisionsLoading(false);
+  }, [relationship]);
 
   const saveMessage = useCallback(
     async (input: PersonalMessageInput) => {
@@ -203,10 +261,55 @@ export function usePersonalMessages(): PersonalMessagesState {
           ? current.map((message) => (message.id === input.id ? nextMessage : message))
           : [nextMessage, ...current];
       });
+      if (input.id) void refreshRevisions(input.id);
       return { error: null };
     },
-    [relationship, user],
+    [refreshRevisions, relationship, user],
   );
 
-  return { messages, loading, error, saving, refresh, saveMessage };
+  const setMessageStatus = useCallback(async (id: string, status: "archived" | "draft") => {
+    if (!relationship || !supabase || !user) {
+      return { error: new Error("Your Loveline connection is not ready yet.") };
+    }
+    setSaving(true);
+    const { data, error: updateError } = await supabase
+      .from("personal_messages")
+      .update({
+        author_id: user.id,
+        status,
+        ...(status === "draft" ? { scheduled_for: null, published_at: null } : {}),
+        updated_at: new Date().toISOString(),
+      })
+      .eq("relationship_id", relationship.id)
+      .eq("id", id)
+      .select(messageSelect)
+      .single();
+    setSaving(false);
+
+    if (updateError || !data) {
+      return { error: new Error("We couldn't update that message right now.") };
+    }
+    const updated = mapMessage(data);
+    setMessages((current) => current.map((message) => message.id === id ? updated : message));
+    void refreshRevisions(id);
+    return { error: null };
+  }, [refreshRevisions, relationship, user]);
+
+  const archiveMessage = useCallback((id: string) => setMessageStatus(id, "archived"), [setMessageStatus]);
+  const restoreMessage = useCallback((id: string) => setMessageStatus(id, "draft"), [setMessageStatus]);
+
+  return {
+    messages,
+    loading,
+    error,
+    saving,
+    revisions,
+    revisionsLoading,
+    revisionsError,
+    refresh,
+    refreshRevisions,
+    saveMessage,
+    archiveMessage,
+    restoreMessage,
+  };
 }

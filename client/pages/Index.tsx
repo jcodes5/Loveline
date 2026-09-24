@@ -27,6 +27,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { isFirebaseMessagingConfigured, registerForNotifications } from "@/lib/firebase-messaging";
 import { supabase } from "@/lib/supabase";
 import { useRelationship } from "@/contexts/RelationshipContext";
+import { useProfileNames } from "@/contexts/ProfileNamesContext";
+import { useTimeGreeting } from "@/hooks/use-time-greeting";
 import { toast } from "sonner";
 
 export default function Index() {
@@ -36,6 +38,8 @@ export default function Index() {
   const [notificationPromptDismissed, setNotificationPromptDismissed] = useState(false);
   const { session } = useAuth();
   const { relationship } = useRelationship();
+  const { displayName, partnerDisplayName } = useProfileNames();
+  const greeting = useTimeGreeting();
   const { content, loading, status, retry } = useDailyContent();
   const {
     message: personalMessage,
@@ -98,7 +102,7 @@ export default function Index() {
         <div>
           <p className="text-sm font-medium text-primary-dark">{formatDailyDate()}</p>
           <h1 className="font-display mt-2 text-[2.6rem] font-semibold leading-[0.95] tracking-[-0.04em] text-foreground sm:text-5xl">
-            Good morning, <span className="text-gradient">love.</span>
+            {greeting}, <span className="text-gradient">{displayName || "love"}.</span>
           </h1>
           <p className="mt-4 max-w-md text-base leading-7 text-muted-foreground">
             I hope today gives you a few quiet reasons to smile.
@@ -223,7 +227,7 @@ export default function Index() {
                 <div className="max-w-2xl">
                   <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-primary-dark">
                     <MailPlus className="size-3.5" aria-hidden="true" />
-                    A note from your person
+                    A note from {partnerDisplayName || "your person"}
                   </div>
                   <h2 className="font-display mt-4 text-3xl font-semibold tracking-[-0.03em]">{personalMessage.title}</h2>
                   <p className="mt-4 whitespace-pre-wrap text-base leading-7 text-muted-foreground">{personalMessage.body}</p>

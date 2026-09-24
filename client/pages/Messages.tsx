@@ -9,6 +9,7 @@ import { HeartBeat } from "@/components/motion/HeartBeat";
 import { Reveal, Stagger, StaggerItem } from "@/components/motion/Reveal";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
+import { useProfileNames } from "@/contexts/ProfileNamesContext";
 import { useLoveReactions, type LoveReaction } from "@/hooks/use-love-reactions";
 import { useQuoteCards, quoteCardImageUrl, type QuoteCard } from "@/hooks/use-quote-cards";
 
@@ -24,6 +25,7 @@ function formatTimestamp(value: string) {
 
 export default function Messages() {
   const { user } = useAuth();
+  const { partnerDisplayName } = useProfileNames();
   const { toast } = useToast();
   const quoteCards = useQuoteCards();
   const reactions = useLoveReactions();
@@ -60,7 +62,7 @@ export default function Messages() {
   }
 
   function senderLabel(senderId: string) {
-    return user?.id === senderId ? "You" : "Your partner";
+    return user?.id === senderId ? "You" : partnerDisplayName || "Your partner";
   }
 
   function FeedbackList({ card }: { card: QuoteCard }) {

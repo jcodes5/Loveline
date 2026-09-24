@@ -3,15 +3,25 @@ import { Router, type Request, type Response } from "express";
 import { z } from "zod";
 
 import { createClient } from "@supabase/supabase-js";
+import { allowRequest } from "../rate-limit";
 
 const uploadSchema = z.object({
   dataUrl: z.string().regex(/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/, "Upload a JPG, PNG, or WebP image."),
   caption: z.string().trim().max(240, "Keep the caption under 240 characters."),
+  notes: z.string().trim().max(2000, "Keep memory notes under 2,000 characters.").optional().default(""),
   takenAt: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Choose a valid date.").nullable(),
   albumId: z.string().uuid().nullable().optional(),
 });
 
-const memorySelect = "id, relationship_id, public_id, format, width, height, bytes, caption, taken_at, created_at, album_id, is_favorite";
+const updateSchema = z.object({
+  isFavorite: z.boolean().optional(),
+  albumId: z.string().uuid().nullable().optional(),
+  notes: z.string().trim().max(2000, "Keep memory notes under 2,000 characters.").optional(),
+}).refine((value) => value.isFavorite !== undefined || value.albumId !== undefined || value.notes !== undefined, {
+  message: "Choose something to update.",
+});
+
+const memorySelect = "id, relationship_id, public_id, format, width, height, bytes, caption, notes, taken_at, created_at, album_id, is_favorite";
 
 type AuthenticatedRequest = Request & {
   authUserId?: string;
@@ -89,6 +99,7 @@ function mapMemory(value: {
   height: number;
   bytes: number;
   caption: string;
+  notes: string;
   taken_at: string | null;
   created_at: string;
   album_id: string | null;
@@ -102,6 +113,7 @@ function mapMemory(value: {
     height: value.height,
     bytes: value.bytes,
     caption: value.caption,
+    notes: value.notes ?? "",
     takenAt: value.taken_at,
     createdAt: value.created_at,
     albumId: value.album_id,
@@ -170,6 +182,8 @@ export function createMemoryRouter() {
         return;
       }
 
+      if (!(await allowRequest(supabase, response, "memory_upload"))) return;
+
       const storage = configureCloudinary();
       const upload = await storage.uploader.upload(parsed.data.dataUrl, {
         folder: `loveline/${relationshipId}`,
@@ -192,6 +206,7 @@ export function createMemoryRouter() {
           height: upload.height,
           bytes: upload.bytes,
           caption: parsed.data.caption,
+          notes: parsed.data.notes,
           taken_at: parsed.data.takenAt,
           album_id: parsed.data.albumId ?? null,
         })
@@ -232,16 +247,58 @@ export function createMemoryRouter() {
         return;
       }
 
-      await destroyAsset(memory.public_id);
       const { error: deleteError } = await supabase.from("memories").delete().eq("id", memory.id);
       if (deleteError) {
-        response.status(500).json({ error: "The image was removed, but its memory record could not be cleared." });
+        response.status(500).json({ error: "We couldn't remove that memory right now." });
         return;
       }
+
+      await destroyAsset(memory.public_id).catch((error) => {
+        console.error("Cloudinary memory asset cleanup failed:", error);
+      });
 
       response.status(204).send();
     } catch {
       response.status(500).json({ error: "We couldn't remove that memory right now." });
+    }
+  });
+
+  router.patch("/:id", async (request, response) => {
+    try {
+      const { supabase } = await authenticate(request);
+      if (!supabase) {
+        response.status(401).json({ error: "Sign in to update that memory." });
+        return;
+      }
+
+      const parsed = updateSchema.safeParse(request.body);
+      if (!parsed.success) {
+        response.status(400).json({ error: parsed.error.issues[0]?.message ?? "Check the memory update." });
+        return;
+      }
+
+      const payload: { is_favorite?: boolean; album_id?: string | null; notes?: string; updated_at: string } = {
+        updated_at: new Date().toISOString(),
+      };
+      if (parsed.data.isFavorite !== undefined) payload.is_favorite = parsed.data.isFavorite;
+      if (parsed.data.albumId !== undefined) payload.album_id = parsed.data.albumId;
+      if (parsed.data.notes !== undefined) payload.notes = parsed.data.notes;
+
+      const { data, error } = await supabase
+        .from("memories")
+        .update(payload)
+        .eq("id", request.params.id)
+        .select(memorySelect)
+        .single();
+
+      if (error || !data) {
+        response.status(500).json({ error: "We couldn't update that memory right now." });
+        return;
+      }
+
+      response.json({ memory: mapMemory(data) });
+    } catch {
+      response.status(500).json({ error: "We couldn't update that memory right now." });
     }
   });
 

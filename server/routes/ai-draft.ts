@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { generateAIDraft, type AIDraftInput, type AIDraftType } from "../ai/gemini";
+import { allowRequest } from "../rate-limit";
 
 const draftTypeSchema = z.enum([
   "daily_affirmation",
@@ -54,6 +55,32 @@ async function requireOwner(supabase: SupabaseClient, userId: string, relationsh
     .eq("owner_id", userId)
     .maybeSingle();
   return !error && !!data;
+}
+
+function estimateTokens(value: unknown) {
+  const text = typeof value === "string" ? value : JSON.stringify(value);
+  return Math.max(1, Math.ceil((text?.length ?? 0) / 4));
+}
+
+async function logGeneration(
+  supabase: SupabaseClient,
+  userId: string,
+  type: AIDraftType,
+  relationshipId: string | null,
+  promptInput: unknown,
+  output: unknown,
+) {
+  const promptTokens = estimateTokens(promptInput);
+  const completionTokens = estimateTokens(output);
+  await supabase.from("ai_generations").insert({
+    relationship_id: relationshipId,
+    created_by: userId,
+    generation_type: type,
+    prompt_tokens: promptTokens,
+    completion_tokens: completionTokens,
+    total_tokens: promptTokens + completionTokens,
+    status: "success",
+  });
 }
 
 export function createAIDraftRouter() {
@@ -144,7 +171,16 @@ export function createAIDraftRouter() {
         effectiveContext = { ...context, days, relationshipName: context.relationshipName ?? "our Loveline" };
       }
 
+      if (!(await allowRequest(supabase, response, "ai_draft"))) return;
+
       const result = await generateAIDraft({ type, context: effectiveContext, count });
+      const relationshipId =
+        typeof effectiveContext.relationshipId === "string"
+          ? effectiveContext.relationshipId
+          : null;
+      await logGeneration(supabase, userId, type, relationshipId, effectiveContext, result.draft).catch((logError) => {
+        console.warn("AI usage log failed:", logError);
+      });
 
       response.json({ draft: result.draft });
     } catch (error) {

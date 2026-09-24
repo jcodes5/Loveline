@@ -16,6 +16,7 @@ export type DailyContent = {
   quoteText: string;
   quoteAuthor: string;
   quoteSource: string | null;
+  approvalStatus: "pending" | "approved" | "rejected";
 };
 
 export type DailyContentInput = Omit<DailyContent, "id"> & { id?: string };
@@ -37,6 +38,7 @@ type DailyContentRow = {
   quote_text: string;
   quote_author: string;
   quote_source: string | null;
+  approval_status: "pending" | "approved" | "rejected";
 };
 
 type DailyContentWorkspaceState = {
@@ -47,11 +49,12 @@ type DailyContentWorkspaceState = {
   error: string | null;
   refresh: () => Promise<void>;
   saveContent: (input: DailyContentInput) => Promise<{ error: Error | null; content?: DailyContent }>;
+  reviewContent: (id: string, approvalStatus: "approved" | "rejected") => Promise<{ error: Error | null }>;
   draftContent: (input: DailyContentDraftInput) => Promise<{ error: Error | null; draft?: Omit<DailyContent, "id" | "contentDate"> }>;
 };
 
 export const dailyContentSelect =
-  "id, content_date, hero_label, hero_title, hero_body, note_body, affirmation, affirmation_detail, quote_text, quote_author, quote_source";
+  "id, content_date, hero_label, hero_title, hero_body, note_body, affirmation, affirmation_detail, quote_text, quote_author, quote_source, approval_status";
 
 export function mapDailyContent(value: DailyContentRow): DailyContent {
   return {
@@ -66,6 +69,7 @@ export function mapDailyContent(value: DailyContentRow): DailyContent {
     quoteText: value.quote_text,
     quoteAuthor: value.quote_author,
     quoteSource: value.quote_source,
+    approvalStatus: value.approval_status,
   };
 }
 
@@ -135,6 +139,7 @@ export function useDailyContentWorkspace(): DailyContentWorkspaceState {
             quote_text: input.quoteText,
             quote_author: input.quoteAuthor,
             quote_source: input.quoteSource || null,
+            approval_status: input.approvalStatus,
             updated_at: new Date().toISOString(),
           },
           { onConflict: "relationship_id,content_date" },
@@ -154,6 +159,30 @@ export function useDailyContentWorkspace(): DailyContentWorkspaceState {
         ),
       );
       return { error: null, content };
+    },
+    [relationship, user],
+  );
+
+  const reviewContent = useCallback(
+    async (id: string, approvalStatus: "approved" | "rejected") => {
+      if (!user || !relationship || !supabase) {
+        return { error: new Error("Your Loveline connection is not ready yet.") };
+      }
+      setSaving(true);
+      const { data, error: reviewError } = await supabase
+        .from("daily_content")
+        .update({ approval_status: approvalStatus, updated_at: new Date().toISOString() })
+        .eq("relationship_id", relationship.id)
+        .eq("id", id)
+        .select("id")
+        .maybeSingle();
+      setSaving(false);
+
+      if (reviewError || !data) {
+        return { error: new Error("We couldn't update this content review right now.") };
+      }
+      setEntries((current) => current.map((entry) => entry.id === id ? { ...entry, approvalStatus } : entry));
+      return { error: null };
     },
     [relationship, user],
   );
@@ -204,6 +233,7 @@ export function useDailyContentWorkspace(): DailyContentWorkspaceState {
           quoteText: "A thought to keep close.",
           quoteAuthor: "Someone wise",
           quoteSource: null,
+          approvalStatus: "pending" as const,
         };
         return { error: null, draft };
       } catch (draftError) {
@@ -219,5 +249,5 @@ export function useDailyContentWorkspace(): DailyContentWorkspaceState {
     [relationship, session?.access_token],
   );
 
-  return { entries, loading, saving, drafting, error, refresh, saveContent, draftContent };
+  return { entries, loading, saving, drafting, error, refresh, saveContent, reviewContent, draftContent };
 }

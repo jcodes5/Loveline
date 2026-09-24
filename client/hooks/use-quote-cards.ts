@@ -36,6 +36,7 @@ export type QuoteCard = {
   alignment: QuoteCardAlignment;
   showDate: boolean;
   createdAt: string;
+  imageUrl: string | null;
   svg: string;
 };
 

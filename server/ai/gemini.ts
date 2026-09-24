@@ -165,21 +165,30 @@ Requirements:
   },
 
   batch_daily: (ctx) => {
-    const { days, relationshipName, themes } = ctx as {
+    const { days, relationshipName, themes, theme, contentDate } = ctx as {
       days: number;
       relationshipName?: string;
       themes?: string[];
+      theme?: string;
+      contentDate?: string;
     };
+    const themeList = Array.isArray(themes)
+      ? themes
+      : typeof theme === "string"
+        ? theme.split(",").map((item) => item.trim()).filter(Boolean)
+        : [];
     return `Generate ${days} days of daily content drafts for Loveline.
 
 Context:
 - Relationship: "${relationshipName || "a private relationship"}"
-- Themes to weave in: ${themes?.join(", ") || "connection, gratitude, small moments"}
+- Start date: ${contentDate || "today"}
+- Themes to weave in: ${themeList.join(", ") || "connection, gratitude, small moments"}
 - Each day needs: heroLabel, heroTitle, heroBody, noteBody, affirmation, affirmationDetail, quoteText, quoteAuthor, quoteSource
 
 Requirements:
 - Varied but cohesive across days
 - Personal, not generic
+- Use consecutive dates beginning with the start date
 - Return JSON only: { "drafts": [ { "contentDate": "YYYY-MM-DD", "heroLabel": "...", "heroTitle": "...", "heroBody": "...", "noteBody": "...", "affirmation": "...", "affirmationDetail": "...", "quoteText": "...", "quoteAuthor": "...", "quoteSource": "..." }, ... ] }`;
   },
 };
