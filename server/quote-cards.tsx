@@ -423,13 +423,27 @@ async function resolveResvg(): Promise<ResvgModule> {
   }
 
   const requireRuntime = nativeRequire();
-  const triples = ["linux-x64-gnu", "linux-x64-musl"];
+  const triples =
+    process.platform === "win32" && process.arch === "x64"
+      ? ["win32-x64-msvc", "linux-x64-gnu", "linux-x64-musl"]
+      : ["linux-x64-gnu", "linux-x64-musl"];
   for (const dir of nativeCandidateDirs()) {
     for (const triple of triples) {
       const candidate = path.join(dir, `resvgjs.${triple}.node`);
       try {
-        const binding = requireRuntime(candidate);
-        resvgModule = binding as ResvgModule;
+        const binding = requireRuntime(candidate) as {
+          Resvg: new (svg: string | Buffer, options?: unknown) => { render(): { asPng(): Buffer } };
+        };
+        // The native binding expects the render options as a JSON string; the
+        // published @resvg/resvg-js package wraps this in a small JS class.
+        // Mirror that wrapper so the shipped binding behaves identically.
+        const NativeResvg = binding.Resvg;
+        class ShippedResvg extends NativeResvg {
+          constructor(svg: string | Buffer, options?: unknown) {
+            super(svg, options == null ? null : JSON.stringify(options));
+          }
+        }
+        resvgModule = { ...binding, Resvg: ShippedResvg } as ResvgModule;
         return resvgModule;
       } catch {
         // Try the next candidate.

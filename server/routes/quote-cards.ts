@@ -56,8 +56,13 @@ function configureCloudinary() {
   const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
   const apiKey = process.env.CLOUDINARY_API_KEY;
   const apiSecret = process.env.CLOUDINARY_API_SECRET;
-  if (!cloudName || !apiKey || !apiSecret) {
-    throw new Error("Quote card image storage is not configured.");
+  const missing = [
+    !cloudName && "CLOUDINARY_CLOUD_NAME",
+    !apiKey && "CLOUDINARY_API_KEY",
+    !apiSecret && "CLOUDINARY_API_SECRET",
+  ].filter(Boolean);
+  if (missing.length > 0) {
+    throw new Error(`Quote card image storage is not configured (missing: ${missing.join(", ")}).`);
   }
   cloudinary.config({ cloud_name: cloudName, api_key: apiKey, api_secret: apiSecret, secure: true });
   return cloudinary;
@@ -119,7 +124,8 @@ async function mapQuoteCard(value: QuoteCardRow) {
       showDate: value.show_date,
       dateLabel: formatDate(value.show_date),
     });
-  } catch {
+  } catch (error) {
+      console.error("Quote cards handler failed:", error);
     svg = fallbackCardSvg(value.palette, value.quote_text, value.quote_author);
   }
   return {
@@ -202,7 +208,8 @@ export function createQuoteCardRouter() {
 
       const cards = await Promise.all((data ?? []).map(mapQuoteCard));
       response.json({ cards });
-    } catch {
+    } catch (error) {
+      console.error("Quote cards handler failed:", error);
       response.status(500).json({ error: "We couldn't load quote cards right now." });
     }
   });
@@ -290,7 +297,8 @@ export function createQuoteCardRouter() {
       }
 
       response.status(201).json({ card: await mapQuoteCard(data) });
-    } catch {
+    } catch (error) {
+      console.error("Quote cards handler failed:", error);
       response.status(500).json({ error: "We couldn't save that quote card right now." });
     }
   });
@@ -340,7 +348,8 @@ export function createQuoteCardRouter() {
       response.setHeader("content-type", "image/png");
       response.setHeader("cache-control", "no-store");
       response.send(png);
-    } catch {
+    } catch (error) {
+      console.error("Quote cards handler failed:", error);
       response.status(500).json({ error: "We couldn't export that quote card right now." });
     }
   });
@@ -377,7 +386,8 @@ export function createQuoteCardRouter() {
       }
 
       response.status(204).send();
-    } catch {
+    } catch (error) {
+      console.error("Quote cards handler failed:", error);
       response.status(500).json({ error: "We couldn't remove that quote card right now." });
     }
   });
