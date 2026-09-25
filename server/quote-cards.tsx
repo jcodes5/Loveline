@@ -1,7 +1,6 @@
 import { Resvg } from "@resvg/resvg-js";
 import fs from "node:fs/promises";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 
 export type QuoteCardPalette = "rose" | "dusk" | "honey";
 export type QuoteCardTemplate = "minimal" | "romantic" | "editorial" | "polaroid" | "night" | "sunrise" | "memory" | "letterpress";
@@ -390,7 +389,9 @@ const REQUIRED_FONTS = [
 
 async function resolveFontFiles(): Promise<string[]> {
   if (fontFilePath) return fontFilePath;
-  const bundleDir = path.dirname(fileURLToPath(import.meta.url));
+  // Netlify bundles functions as CommonJS, where import.meta.url is unavailable,
+  // so resolve relative to argv[1] (the running script) and fall back to cwd.
+  const bundleDir = path.dirname(process.argv[1] ?? process.cwd());
   const candidateDirs = [
     // dist/server/fonts (production build copies fonts here)
     path.resolve(bundleDir, "fonts"),
