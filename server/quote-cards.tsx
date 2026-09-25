@@ -35,20 +35,15 @@ const palettes: Record<QuoteCardPalette, {
   honey: { background: "#f4e8cf", foreground: "#493b2f", accent: "#a86e47", soft: "#e3c394" },
 };
 
-const templateBackgrounds: Record<QuoteCardTemplate, string> = {
-  minimal: "",
-  romantic: "linear-gradient(135deg, #fdf2f8 0%, #fce7f3 100%)",
+const legacyTemplateBackgrounds: Partial<Record<QuoteCardTemplate, string>> = {
   editorial: "#ffffff",
-  polaroid: "#fafafa",
-  night: "linear-gradient(180deg, #0f172a 0%, #1e293b 100%)",
   sunrise: "linear-gradient(180deg, #fff7ed 0%, #fed7aa 100%)",
   memory: "linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)",
-  letterpress: "linear-gradient(160deg, #f4efe6 0%, #ece4d4 100%)",
 };
 
 const artisanalGradients: Record<ArtisanalGradientKey, string> = {
-  rose_dawn: "radial-gradient(120% 90% at 15% 10%, #ffe9ee 0%, #f7c6d4 38%, #c9899f 72%, #8f5b74 100%)",
-  lavender_dusk: "radial-gradient(120% 90% at 85% 20%, #e9e4ff 0%, #c9b8ef 40%, #7d6fb0 75%, #443b66 100%)",
+  rose_dawn: "linear-gradient(135deg, #f9c5d1 0%, #e98aa2 60%, #d1698a 100%)",
+  lavender_dusk: "linear-gradient(135deg, #e5dbf5 0%, #b9a6e0 50%, #8d76c9 100%)",
   golden_hour: "linear-gradient(150deg, #fff3d6 0%, #f7d9a8 34%, #d9a25f 68%, #8f5f33 100%)",
   twilight_velvet: "linear-gradient(170deg, #1e2238 0%, #40304f 45%, #6d3a54 78%, #2b1d33 100%)",
 };
@@ -84,7 +79,7 @@ function wrapText(value: string, maxChars = 38): string[] {
     }
   }
   if (current) lines.push(current);
-  return lines.slice(0, 7);
+  return lines;
 }
 
 interface LayoutConfig {
@@ -136,24 +131,21 @@ function getLayout(template: QuoteCardTemplate, colors: typeof palettes[keyof ty
 
     case "polaroid":
       return {
-        quote: { x: 80, y: 780, maxWidth: 1040, fontSize: 52, lineHeight: 72, fontWeight: 700, color: colors.foreground },
+        quote: { x: 80, y: 520, maxWidth: 1040, fontSize: 52, lineHeight: 72, fontWeight: 700, color: colors.foreground },
         author: { x: 80, y: 0, fontSize: 24, fontWeight: 600, color: colors.foreground },
         source: { x: 80, y: 0, fontSize: 18, fontWeight: 400, color: colors.foreground, opacity: 0.6 },
         date: { x: 80, y: 0, fontSize: 16, fontWeight: 400, color: colors.foreground, opacity: 0.5 },
         brand: { x: 80, y: 1140, fontSize: 14, fontWeight: 600, color: colors.accent, letterSpacing: 2 },
-        decorative: [
-          <rect key="1" x={60} y={60} width={1080} height={1080} rx={12} fill="#ffffff" stroke="#e5e5e5" strokeWidth={2} />,
-          <rect key="2" x={60} y={60} width={1080} height={720} fill="#f5f5f5" />
-        ],
+        decorative: [<rect key="tape" x={538} y={60} width={124} height={40} rx={8} fill="#ffffff" opacity={0.7} />],
       };
 
     case "night":
       return {
-        quote: { x: 100, y: 300, maxWidth: 1000, fontSize: 60, lineHeight: 80, fontWeight: 700, fontStyle: "italic", color: "#f8fafc" },
-        author: { x: 100, y: 0, fontSize: 28, fontWeight: 500, color: "#e2e8f0" },
-        source: { x: 100, y: 0, fontSize: 22, fontWeight: 400, color: "#94a3b8", opacity: 0.8 },
-        date: { x: 100, y: 0, fontSize: 18, fontWeight: 400, color: "#94a3b8", opacity: 0.6 },
-        brand: { x: 100, y: 1100, fontSize: 18, fontWeight: 600, color: "#fbbf24", letterSpacing: 2 },
+        quote: { x: 100, y: 300, maxWidth: 1000, fontSize: 60, lineHeight: 80, fontWeight: 700, fontStyle: "italic", color: colors.foreground },
+        author: { x: 100, y: 0, fontSize: 28, fontWeight: 500, color: colors.foreground },
+        source: { x: 100, y: 0, fontSize: 22, fontWeight: 400, color: colors.foreground, opacity: 0.8 },
+        date: { x: 100, y: 0, fontSize: 18, fontWeight: 400, color: colors.foreground, opacity: 0.6 },
+        brand: { x: 100, y: 1100, fontSize: 18, fontWeight: 600, color: colors.accent, letterSpacing: 2 },
         decorative: [
           <circle key="1" cx={1100} cy={100} r={4} fill="#fbbf24" opacity={0.9} />,
           <circle key="2" cx={200} cy={200} r={2} fill="#fbbf24" opacity={0.6} />,
@@ -192,11 +184,11 @@ function getLayout(template: QuoteCardTemplate, colors: typeof palettes[keyof ty
 
     case "letterpress":
       return {
-        quote: { x: 140, y: 320, maxWidth: 920, fontSize: 60, lineHeight: 82, fontWeight: 700, color: "#3f3527" },
-        author: { x: 140, y: 0, fontSize: 28, fontWeight: 500, color: "#6b5a41" },
-        source: { x: 140, y: 0, fontSize: 22, fontWeight: 400, color: "#6b5a41", opacity: 0.7 },
-        date: { x: 140, y: 0, fontSize: 18, fontWeight: 400, color: "#6b5a41", opacity: 0.55 },
-        brand: { x: 140, y: 1090, fontSize: 18, fontWeight: 700, color: "#8a6b3f", letterSpacing: 3 },
+        quote: { x: 140, y: 320, maxWidth: 920, fontSize: 60, lineHeight: 82, fontWeight: 700, color: colors.foreground },
+        author: { x: 140, y: 0, fontSize: 28, fontWeight: 500, color: colors.foreground },
+        source: { x: 140, y: 0, fontSize: 22, fontWeight: 400, color: colors.foreground, opacity: 0.7 },
+        date: { x: 140, y: 0, fontSize: 18, fontWeight: 400, color: colors.foreground, opacity: 0.55 },
+        brand: { x: 140, y: 1090, fontSize: 18, fontWeight: 700, color: colors.accent, letterSpacing: 3 },
         decorative: [
           <rect key="1" x={70} y={70} width={1060} height={1060} fill="none" stroke="#c9b89a" strokeWidth={2} />,
           <rect key="2" x={82} y={82} width={1036} height={1036} fill="none" stroke="#c9b89a" strokeWidth={1} opacity={0.5} />,
@@ -309,7 +301,7 @@ export async function renderQuoteCardSvg(input: QuoteCardRenderInput): Promise<s
 
   // Choose the effective palette/colors for the chosen background mode.
   let effectivePalette = colors;
-  let bg = templateBackgrounds[input.template] || colors.background;
+  let bg = legacyTemplateBackgrounds[input.template] ?? colors.background;
   if (bgType === "gradient" && gradient && artisanalGradients[gradient]) {
     bg = artisanalGradients[gradient];
     const artColors = artisanalForegrounds[gradient];
@@ -329,8 +321,29 @@ export async function renderQuoteCardSvg(input: QuoteCardRenderInput): Promise<s
     };
   }
 
-  const quoteLines = wrapText(input.quoteText);
-  const baseLayout = getLayout(input.template, effectivePalette, quoteLines);
+  const initialLayout = getLayout(input.template, effectivePalette, []);
+  const reservedHeight = 80
+    + initialLayout.author.fontSize
+    + (initialLayout.source ? 44 + initialLayout.source.fontSize : 0)
+    + (input.showDate && initialLayout.date ? 36 + initialLayout.date.fontSize : 0)
+    + 20;
+  const quoteHeight = Math.max(80, initialLayout.brand.y - initialLayout.quote.y - reservedHeight);
+  let quoteFontSize = initialLayout.quote.fontSize;
+  let quoteLines: string[];
+  let quoteLineHeight: number;
+
+  while (true) {
+    quoteLineHeight = Math.max(20, Math.round(quoteFontSize * 1.3));
+    const maxChars = Math.max(10, Math.floor(initialLayout.quote.maxWidth / (quoteFontSize * 0.52)));
+    quoteLines = wrapText(input.quoteText, maxChars);
+    if (quoteLines.length * quoteLineHeight <= quoteHeight || quoteFontSize <= 16) break;
+    quoteFontSize = Math.max(16, quoteFontSize - 2);
+  }
+
+  const baseLayout = {
+    ...initialLayout,
+    quote: { ...initialLayout.quote, fontSize: quoteFontSize, lineHeight: quoteLineHeight },
+  };
   const layout = applyAlignment(baseLayout, input.alignment ?? "center");
 
   const quoteTextNodes = quoteLines.map((line, i) => (
@@ -359,7 +372,7 @@ export async function renderQuoteCardSvg(input: QuoteCardRenderInput): Promise<s
           src={input.backgroundDataUrl}
           width={1200}
           height={1200}
-          style={{ width: 1200, height: 1200, objectFit: "cover" }}
+          style={{ position: "absolute", inset: 0, width: 1200, height: 1200, objectFit: "cover" }}
         />
         <div
           style={{

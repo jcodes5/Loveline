@@ -33,4 +33,21 @@ describe("quote card renderer", () => {
     expect(svg).toContain('fill="#30242a"');
     expect(svg).toContain('fill="#fff8f6"');
   }, 20000);
+
+  it("keeps an uploaded background behind the quote text", async () => {
+    const svg = await renderQuoteCardSvg({
+      quoteText: "Visible over the photo",
+      quoteAuthor: "Loveline",
+      quoteSource: null,
+      palette: "rose",
+      template: "minimal",
+      bgType: "image",
+      backgroundDataUrl: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADUlEQVR4nGP4z8AAAAMBAQDJ/pLvAAAAAElFTkSuQmCC",
+    });
+
+    const imagePosition = svg.indexOf("data:image/png;base64");
+    const textPosition = svg.indexOf('fill="#fff8f6"');
+    expect(imagePosition).toBeGreaterThanOrEqual(0);
+    expect(textPosition).toBeGreaterThan(imagePosition);
+  }, 20000);
 });

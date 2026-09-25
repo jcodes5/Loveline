@@ -144,11 +144,11 @@ function AdminMenu() {
       <DropdownMenuTrigger asChild>
         <Button
           variant="ghost"
-          className="h-9 gap-1.5 rounded-full px-3 text-sm font-medium text-primary-dark transition-colors hover:bg-primary-soft"
+          className="h-9 gap-1.5 rounded-full px-2 text-xs font-medium text-primary-dark transition-colors hover:bg-primary-soft sm:px-3 sm:text-sm"
           aria-label="Admin tools"
         >
           <Settings2 className="size-[17px]" aria-hidden="true" />
-          <span className="hidden xl:inline">Admin</span>
+          <span>Admin</span>
           <ChevronDown className="size-3.5 text-muted-foreground" aria-hidden="true" />
         </Button>
       </DropdownMenuTrigger>
@@ -237,9 +237,7 @@ export default function AppShell() {
 
           <div className="flex items-center gap-0.5 sm:gap-1">
             {isOwner && (
-              <div className="hidden lg:block">
-                <AdminMenu />
-              </div>
+              <AdminMenu />
             )}
             <NotificationSettingsPopover />
             <ThemeToggle />

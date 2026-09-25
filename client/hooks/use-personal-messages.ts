@@ -234,7 +234,7 @@ export function usePersonalMessages(): PersonalMessagesState {
         status: input.status,
         scheduled_for: input.status === "scheduled" ? input.scheduledFor : null,
         published_at: input.status === "published" ? new Date().toISOString() : null,
-        special_date_id: input.specialDateId ?? null,
+        special_date_id: input.specialDateId?.trim() || null,
       };
 
       const result = input.id

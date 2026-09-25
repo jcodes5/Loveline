@@ -78,20 +78,20 @@ const STARTER_POEMS: StudioPoem[] = [
   },
 ];
 
-function previewLines(value: string) {
+function previewLines(value: string, maxChars = 40) {
   const words = value.trim().split(/\s+/).filter(Boolean);
   const lines: string[] = [];
   let current = "";
   for (const word of words) {
     const next = current ? `${current} ${word}` : word;
-    if (next.length <= 28 || !current) current = next;
+    if (next.length <= maxChars || !current) current = next;
     else {
       lines.push(current);
       current = word;
     }
   }
   if (current) lines.push(current);
-  return lines.slice(0, 6);
+  return lines;
 }
 
 function readAndDownscale(file: File): Promise<string | null> {
@@ -153,24 +153,31 @@ export default function Create() {
   const [savedCard, setSavedCard] = useState<QuoteCard | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const colors = TEMPLATES[template];
+  const colors = PALETTES[palette];
   const bgStyle =
     bgType === "gradient"
       ? { background: GRADIENTS[gradient].css }
-      : { background: colors.background };
+      : { background: bgType === "image" ? "#30242a" : colors.background };
   const textColor =
     bgType === "gradient"
       ? GRADIENTS[gradient].foreground
+      : bgType === "image"
+        ? "#fff8f6"
       : colors.foreground;
   const accentColor =
     bgType === "gradient"
       ? GRADIENTS[gradient].accent
+      : bgType === "image"
+        ? "#f2c6d4"
       : colors.accent;
   const brandColor =
     bgType === "gradient"
       ? GRADIENTS[gradient].brandForeground
-      : colors.brandForeground;
+      : bgType === "image"
+        ? "#f2c6d4"
+        : colors.accent;
   const previewQuote = previewLines(form.quoteText || "A little thought, quietly yours.");
+  const previewFontSize = previewQuote.length > 4 ? Math.max(18, 48 - (previewQuote.length - 4) * 2.5) : 48;
   const alignClass = alignment === "left" ? "items-start text-left" : alignment === "right" ? "items-end text-right" : "items-center text-center";
   const previewTextClass = alignment === "left" ? "text-left" : alignment === "right" ? "text-right" : "text-center";
 
@@ -581,7 +588,7 @@ export default function Create() {
               )}
 
               <div className={`mt-12 flex min-h-[240px] flex-1 flex-col justify-center ${alignClass}`}>
-                <p className="font-display text-4xl font-semibold leading-[1.08] tracking-[-0.04em] sm:text-5xl">
+                <p className="font-display font-semibold leading-[1.08]" style={{ fontSize: previewFontSize }}>
                   {previewQuote.map((line, index) => (
                     <span className="block" key={`${line}-${index}`}>
                       {index === 0 ? `“${line}` : line}{index === previewQuote.length - 1 ? "”" : ""}

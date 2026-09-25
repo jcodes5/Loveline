@@ -19,7 +19,7 @@ const messageSchema = z.object({
   messageType: z.enum(["good_morning", "good_night", "miss_you", "proud", "encouragement", "laugh", "random"]),
   status: z.enum(["draft", "scheduled", "published"]),
   scheduledFor: z.string().nullable(),
-  specialDateId: z.string().nullable().optional(),
+  specialDateId: z.string().uuid().nullable().optional(),
 });
 
 type FormState = {
@@ -171,7 +171,7 @@ export default function MessageWorkspace() {
       messageType: form.messageType,
       status: form.status,
       scheduledFor,
-      specialDateId: form.specialDateId,
+      specialDateId: form.specialDateId?.trim() || null,
     });
 
     if (!result.success) {
@@ -191,7 +191,7 @@ export default function MessageWorkspace() {
       messageType: result.data.messageType,
       status: result.data.status,
       scheduledFor,
-      specialDateId: form.specialDateId,
+      specialDateId: result.data.specialDateId ?? null,
     });
 
     if (response.error) {
@@ -374,10 +374,10 @@ export default function MessageWorkspace() {
             )}
             <div className="space-y-2">
               <Label htmlFor="message-special-date">Link to special date <span className="font-normal text-muted-foreground">(optional)</span></Label>
-              <Select value={form.specialDateId ?? ""} onValueChange={(v) => setForm((current) => ({ ...current, specialDateId: v || undefined }))} disabled={saving}>
+              <Select value={form.specialDateId || "none"} onValueChange={(v) => setForm((current) => ({ ...current, specialDateId: v === "none" ? "" : v }))} disabled={saving}>
                 <SelectTrigger id="message-special-date"><SelectValue placeholder="Choose a special date…" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">None</SelectItem>
+                  <SelectItem value="none">None</SelectItem>
                   {specialDates.map((date) => (
                     <SelectItem key={date.id} value={date.id}>{date.label} ({formatDate(date.eventDate)})</SelectItem>
                   ))}
