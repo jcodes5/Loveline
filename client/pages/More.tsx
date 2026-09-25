@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ArrowLeft, CalendarHeart, Check, ClipboardCopy, Clock3, Globe, Heart, Link2, LoaderCircle, MapPin, MessagesSquare, Pencil, Plus, RefreshCw, Sparkles, Trash2 } from "lucide-react";
+import { ArrowLeft, CalendarHeart, Check, ClipboardCopy, Clock3, Globe, Heart, Link2, LoaderCircle, LogOut, MapPin, MessagesSquare, Pencil, Plus, RefreshCw, Sparkles, Trash2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { z } from "zod";
 
@@ -88,7 +88,7 @@ function formatDate(value: string) {
 }
 
 export default function More() {
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
   const { relationship } = useRelationship();
   const { displayName, partnerDisplayName, saveDisplayName } = useProfileNames();
   const { dates, daysTogether, loading, saving, error, refresh, saveDate, removeDate } = useSpecialDates();
@@ -342,7 +342,9 @@ export default function More() {
         <Button asChild variant="outline" className="mt-5 h-10 shrink-0 rounded-full border-primary/20 bg-surface sm:mt-0"><Link to="/mood-history">View mood history</Link></Button>
       </section>
 
-      <div className="mt-8 flex justify-end"><Button asChild variant="outline" className="h-10 rounded-full"><Link to="/settings/notifications">Notification preferences</Link></Button></div>
+      <div className="mt-8 flex flex-wrap items-center justify-end gap-3"><Button asChild variant="outline" className="h-10 rounded-full"><Link to="/settings/notifications">Notification preferences</Link></Button></div>
+
+      <div className="mt-4 flex justify-end"><Button variant="outline" className="h-10 rounded-full border-destructive/30 text-destructive hover:bg-destructive/5 hover:text-destructive" onClick={() => void signOut()}><LogOut className="size-4" aria-hidden="true" />Sign out</Button></div>
     </div>
   );
 }
