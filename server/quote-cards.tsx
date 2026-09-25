@@ -1,6 +1,7 @@
-import { Resvg } from "@resvg/resvg-js";
+import type { Resvg as ResvgType } from "@resvg/resvg-js";
 import fs from "node:fs/promises";
 import path from "node:path";
+import { createRequire } from "node:module";
 
 export type QuoteCardPalette = "rose" | "dusk" | "honey";
 export type QuoteCardTemplate = "minimal" | "romantic" | "editorial" | "polaroid" | "night" | "sunrise" | "memory" | "letterpress";
@@ -379,6 +380,65 @@ export async function renderQuoteCardSvg(input: QuoteCardRenderInput): Promise<s
 }
 
 let fontFilePath: string[] | null = null;
+let resvgModule: ResvgModule | null = null;
+
+// Loaded dynamically (never statically) so a missing native binding can't crash
+// the module: Netlify bundlers externalize `@resvg/resvg-js` but routinely skip
+// its *optional* platform packages, so we ship the linux-x64 .node binary in
+// dist/server/native ourselves (see scripts/copy-native-resvg.mjs).
+const RESVG_SPECIFIER = ["@resvg", "resvg-js"].join("/");
+
+type ResvgModule = {
+  Resvg: typeof ResvgType;
+};
+
+function nativeRequire() {
+  const base = typeof process !== "undefined" && process.argv && typeof process.argv[1] === "string"
+    ? path.dirname(process.argv[1])
+    : process.cwd();
+  return createRequire(path.join(base, "__resvg-native__.cjs"));
+}
+
+function nativeCandidateDirs() {
+  const base = typeof process !== "undefined" && process.argv && typeof process.argv[1] === "string"
+    ? path.dirname(process.argv[1])
+    : process.cwd();
+  return [
+    path.resolve(base, "dist/server/native"),
+    path.resolve(base, "native"),
+    path.resolve(process.cwd(), "dist/server/native"),
+    path.resolve(process.cwd(), "native"),
+  ];
+}
+
+async function resolveResvg(): Promise<ResvgModule> {
+  if (resvgModule) return resvgModule;
+
+  try {
+    const module = await import(RESVG_SPECIFIER);
+    resvgModule = module as ResvgModule;
+    return resvgModule;
+  } catch {
+    // Native package unavailable at runtime; fall back to the bundled .node file.
+  }
+
+  const requireRuntime = nativeRequire();
+  const triples = ["linux-x64-gnu", "linux-x64-musl"];
+  for (const dir of nativeCandidateDirs()) {
+    for (const triple of triples) {
+      const candidate = path.join(dir, `resvgjs.${triple}.node`);
+      try {
+        const binding = requireRuntime(candidate);
+        resvgModule = binding as ResvgModule;
+        return resvgModule;
+      } catch {
+        // Try the next candidate.
+      }
+    }
+  }
+
+  throw new Error("The comment card renderer (resvg) is not available in this runtime.");
+}
 
 const REQUIRED_FONTS = [
   "Inter-Regular.ttf",
@@ -429,6 +489,7 @@ async function resolveFontFiles(): Promise<string[]> {
 export async function renderQuoteCardPng(input: QuoteCardRenderInput): Promise<Buffer> {
   const svg = await renderQuoteCardSvg(input);
   const fontFiles = await resolveFontFiles();
+  const { Resvg } = await resolveResvg();
   const resvg = new Resvg(svg, {
     fitTo: { mode: "width", value: 1200 },
     font:

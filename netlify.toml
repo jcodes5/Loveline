@@ -30,7 +30,7 @@
 [functions]
   node_bundler = "esbuild"
   included_files = ["dist/server/**/*"]
-  external_node_modules = ["@resvg/resvg-js", "@resvg/resvg-js-linux-x64-gnu", "@resvg/resvg-js-linux-x64-musl"]
+  external_node_modules = ["@resvg/resvg-js"]
 
 [[schedule]]
   function = "send-due-notifications"
