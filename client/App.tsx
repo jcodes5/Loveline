@@ -109,8 +109,8 @@ const App = () => (
             <Suspense fallback={<RouteFallback />}>
               <Routes>
               <Route path="/auth" element={<Auth />} />
+              <Route path="/invite/:token" element={<AcceptInvite />} />
               <Route element={<AuthBoundary />}>
-                <Route path="/invite/:token" element={<AcceptInvite />} />
                 <Route path="/setup" element={<RelationshipSetup />} />
                 <Route element={<RelationshipBoundary />}>
                   <Route element={<AppShell />}>

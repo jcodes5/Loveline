@@ -8,6 +8,7 @@ import { createDailyContentRouter } from "./routes/daily-content";
 import { createAIDraftRouter } from "./routes/ai-draft";
 import { createAdminSummaryRouter } from "./routes/admin-summary";
 import { createLoveReactionRouter } from "./routes/love-reactions";
+import { createInvitationsRouter } from "./routes/invitations";
 
 export function createServer() {
   const app = express();
@@ -30,6 +31,7 @@ export function createServer() {
   app.use("/api/ai", createAIDraftRouter());
   app.use("/api/admin", createAdminSummaryRouter());
   app.use("/api/love-reactions", createLoveReactionRouter());
+  app.use("/api/invites", createInvitationsRouter());
 
   return app;
 }
