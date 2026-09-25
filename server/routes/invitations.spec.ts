@@ -3,9 +3,10 @@ import type { Request, Response } from "express";
 
 import { handleRequestInviteSignIn } from "./invitations";
 
-const { lookupInvitation, inviteUserByEmail } = vi.hoisted(() => ({
+const { lookupInvitation, inviteUserByEmail, recordSignInLinkSent } = vi.hoisted(() => ({
   lookupInvitation: vi.fn(),
   inviteUserByEmail: vi.fn(),
+  recordSignInLinkSent: vi.fn(),
 }));
 
 vi.mock("../supabase-admin", () => ({
@@ -16,6 +17,7 @@ vi.mock("../supabase-admin", () => ({
           maybeSingle: async () => lookupInvitation(),
         }),
       }),
+      update: () => ({ eq: async () => recordSignInLinkSent() }),
     }),
     auth: {
       admin: { inviteUserByEmail },
@@ -30,6 +32,7 @@ const validInvite = {
   status: "pending",
   expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
   used_at: null,
+  sign_in_email_sent_at: null,
 };
 
 function makeRequest(inviteToken: string): Request {
@@ -63,7 +66,9 @@ describe("handleRequestInviteSignIn", () => {
   beforeEach(() => {
     lookupInvitation.mockReset();
     inviteUserByEmail.mockReset();
+    recordSignInLinkSent.mockReset();
     inviteUserByEmail.mockResolvedValue({ error: null });
+    recordSignInLinkSent.mockResolvedValue({ error: null });
   });
 
   it("sends a magic-link invite to the invitation email", async () => {
@@ -78,6 +83,25 @@ describe("handleRequestInviteSignIn", () => {
       data: { source: "relationship_invite" },
       redirectTo: `https://loveline.example/invite/${token}`,
     });
+    expect(recordSignInLinkSent).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not resend when a sign-in link was sent within the cooldown", async () => {
+    lookupInvitation.mockResolvedValue({
+      data: {
+        ...validInvite,
+        sign_in_email_sent_at: new Date(Date.now() - 30 * 1000).toISOString(),
+      },
+      error: null,
+    });
+
+    const response = makeResponse();
+    await handleRequestInviteSignIn(makeRequest(token), response as unknown as Response);
+
+    expect(response._status).toBe(200);
+    expect(response._body).toEqual({ ok: true, alreadySent: true });
+    expect(inviteUserByEmail).not.toHaveBeenCalled();
+    expect(recordSignInLinkSent).not.toHaveBeenCalled();
   });
 
   it("rejects a malformed token without looking it up", async () => {

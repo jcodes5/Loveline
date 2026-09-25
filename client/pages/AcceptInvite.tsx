@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Heart, Link2, LoaderCircle, Mail } from "lucide-react";
+import { Heart, Link2, LoaderCircle, Mail, RefreshCw } from "lucide-react";
 import { Navigate, useNavigate, useParams } from "react-router-dom";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -19,6 +19,7 @@ export default function AcceptInvite() {
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
   const autoAccepted = useRef(false);
+  const autoSent = useRef(false);
 
   const inviteToken = useMemo(() => token?.trim() ?? "", [token]);
   const isGuest = !user;
@@ -70,6 +71,14 @@ export default function AcceptInvite() {
     void handleAccept();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready, user, relationship, submitting, inviteToken]);
+
+  useEffect(() => {
+    if (!ready || user || sent || sending || autoSent.current || !configured) return;
+    if (!inviteToken) return;
+    autoSent.current = true;
+    void handleSendSignInLink();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready, user, sent, sending, configured, inviteToken]);
 
   if (!ready) {
     return <LoadingPulse label="Opening your private Loveline…" />;
@@ -131,6 +140,22 @@ export default function AcceptInvite() {
                 </Button>
               </div>
             </>
+          ) : isGuest && sending ? (
+            <>
+              <div className="mx-auto mt-12 max-w-xl">
+                <div className="mx-auto grid size-16 place-items-center rounded-2xl bg-primary-soft text-primary-dark">
+                  <LoaderCircle className="size-7 animate-spin" aria-hidden="true" />
+                </div>
+                <p className="mt-7 text-xs font-semibold uppercase tracking-[0.18em] text-primary-dark">Opening your invitation</p>
+                <h1 className="font-display mt-3 text-4xl font-semibold tracking-[-0.04em] sm:text-5xl">Sending your magic link…</h1>
+                <p className="mx-auto mt-4 max-w-md text-base leading-7 text-muted-foreground">A quiet link is being prepared for the invited email. It will sign you straight in — no password, no setup.</p>
+              </div>
+              <div className="mx-auto mt-7 max-w-xl">
+                <Button variant="ghost" className="h-11 rounded-full text-muted-foreground" onClick={switchAccount}>
+                  Use a different account
+                </Button>
+              </div>
+            </>
           ) : isGuest && sent ? (
             <>
               <div className="mx-auto mt-12 max-w-xl">
@@ -141,7 +166,11 @@ export default function AcceptInvite() {
                 <h1 className="font-display mt-3 text-4xl font-semibold tracking-[-0.04em] sm:text-5xl">A quiet link is on its way.</h1>
                 <p className="mx-auto mt-4 max-w-md text-base leading-7 text-muted-foreground">The email this invitation was made for will receive a link that opens your invitation and signs you straight in. No password, no setup.</p>
               </div>
-              <div className="mx-auto mt-7 max-w-xl">
+              <div className="mx-auto mt-7 flex max-w-xl flex-col items-center gap-3 sm:flex-row sm:justify-center">
+                <Button variant="outline" className="h-11 rounded-full sm:px-6" onClick={() => void handleSendSignInLink()} disabled={sending || !inviteToken}>
+                  {sending ? <LoaderCircle className="size-4 animate-spin" aria-hidden="true" /> : <RefreshCw className="size-4" aria-hidden="true" />}
+                  Send it again
+                </Button>
                 <Button variant="ghost" className="h-11 rounded-full text-muted-foreground" onClick={switchAccount}>
                   Use a different account
                 </Button>

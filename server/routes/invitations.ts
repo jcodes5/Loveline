@@ -7,9 +7,11 @@ type InvitationRecord = {
   status: string;
   expires_at: string | null;
   used_at: string | null;
+  sign_in_email_sent_at: string | null;
 };
 
 const TOKEN_PATTERN = /^[A-Za-z0-9_-]{20,200}$/;
+const SIGN_IN_EMAIL_COOLDOWN_MS = 2 * 60 * 1000;
 
 function redirectOrigin(request: Request) {
   const origin = request.get("origin");
@@ -31,11 +33,12 @@ export async function handleRequestInviteSignIn(request: Request, response: Resp
 
     const { data: invitation, error } = await admin
       .from("relationship_invitations")
-      .select("invitee_email, status, expires_at, used_at")
+      .select("invitee_email, status, expires_at, used_at, sign_in_email_sent_at")
       .eq("token", token)
       .maybeSingle<InvitationRecord>();
 
     if (error || !invitation) {
+      if (error) console.error("Invitation lookup failed:", error);
       response.status(404).json({ error: "That invitation was not found." });
       return;
     }
@@ -66,6 +69,18 @@ export async function handleRequestInviteSignIn(request: Request, response: Resp
       return;
     }
 
+    const lastSentAt = invitation.sign_in_email_sent_at
+      ? new Date(invitation.sign_in_email_sent_at).getTime()
+      : null;
+    if (
+      lastSentAt !== null &&
+      !Number.isNaN(lastSentAt) &&
+      Date.now() - lastSentAt < SIGN_IN_EMAIL_COOLDOWN_MS
+    ) {
+      response.json({ ok: true, alreadySent: true });
+      return;
+    }
+
     const { error: inviteError } = await admin.auth.admin.inviteUserByEmail(
       invitation.invitee_email,
       {
@@ -78,6 +93,15 @@ export async function handleRequestInviteSignIn(request: Request, response: Resp
       console.error("Invitation sign-in email failed:", inviteError);
       response.status(502).json({ error: "We couldn't send your magic link right now. Please try again." });
       return;
+    }
+
+    try {
+      await admin
+        .from("relationship_invitations")
+        .update({ sign_in_email_sent_at: new Date().toISOString() })
+        .eq("token", token);
+    } catch (timestampError) {
+      console.error("Invitation sign-in timestamp update failed:", timestampError);
     }
 
     response.json({ ok: true });
