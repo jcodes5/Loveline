@@ -12,7 +12,7 @@ const templateSchema = z.enum(["minimal", "romantic", "editorial", "polaroid", "
 const bgTypeSchema = z.enum(["template", "gradient", "image"]);
 const gradientSchema = z.enum(["rose_dawn", "lavender_dusk", "golden_hour", "twilight_velvet"]);
 const alignmentSchema = z.enum(["left", "center", "right"]);
-const backgroundDataUrlSchema = z.string().regex(/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/, "Choose a valid image.").max(4_000_000);
+const backgroundDataUrlSchema = z.string().regex(/^data:image\/(jpeg|png);base64,[A-Za-z0-9+/=]+$/, "Choose a valid image.").max(4_000_000);
 const quoteCardSchema = z.object({
   relationshipId: z.string().uuid("A relationship is required."),
   quoteText: z.string().trim().min(1, "Write a quote for the card.").max(600, "Keep the quote under 600 characters."),
