@@ -190,7 +190,7 @@ export function useOpenWhen(): OpenWhenState {
         media_id: input.mediaId ?? null,
         media_type: input.mediaType ?? null,
         unlock_rule: input.unlockRule ?? "immediate",
-        unlock_at: input.unlockAt ?? null,
+        unlock_at: input.unlockAt && input.unlockAt.trim() !== "" ? new Date(input.unlockAt).toISOString() : null,
         is_locked: input.isLocked ?? false,
         updated_at: new Date().toISOString(),
       };
