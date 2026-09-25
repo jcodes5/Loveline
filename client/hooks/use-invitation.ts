@@ -24,7 +24,7 @@ type InviteState = {
   regenerate: () => Promise<{ error: Error | null }>;
 };
 
-const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+const INVITE_TTL_MS = 24 * 60 * 60 * 1000;
 
 export function useInvitation(): InviteState {
   const { user } = useAuth();

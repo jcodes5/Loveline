@@ -270,6 +270,12 @@ export default function More() {
                   Reserved for {invitation.inviteeEmail}
                 </p>
               )}
+              {invitation.expiresAt && (
+                <p className="mt-1.5 flex items-center gap-2 text-xs text-muted-foreground">
+                  <Clock3 className="size-3.5" aria-hidden="true" />
+                  Expires {new Intl.DateTimeFormat("en-US", { month: "long", day: "numeric", year: "numeric" }).format(new Date(invitation.expiresAt))}
+                </p>
+              )}
             </div>
           ) : (
             <div className="mt-5 rounded-card border border-dashed border-border bg-surface-muted/50 px-6 py-8 text-center">

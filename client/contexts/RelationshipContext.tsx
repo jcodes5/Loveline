@@ -304,7 +304,7 @@ export function RelationshipProvider({ children }: { children: React.ReactNode }
         }
 
         const token = generateInviteToken();
-        const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+        const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
 
         const { error: insertError } = await supabase
           .from("relationship_invitations")
