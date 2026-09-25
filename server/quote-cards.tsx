@@ -405,6 +405,9 @@ function nativeCandidateDirs() {
     : process.cwd();
   return [
     path.resolve(base, "dist/server/native"),
+    // Netlify Lambda: function at /var/task/netlify/functions/api.js, bundled
+    // dist/server/native at /var/task/dist/server/native.
+    path.resolve(base, "../../dist/server/native"),
     path.resolve(base, "native"),
     path.resolve(process.cwd(), "dist/server/native"),
     path.resolve(process.cwd(), "native"),
@@ -473,6 +476,8 @@ async function resolveFontFiles(): Promise<string[]> {
     path.resolve(bundleDir, "../fonts"),
     // Netlify: `included_files` zip preserves dist/server/fonts under the task dir
     path.resolve(bundleDir, "dist/server/fonts"),
+    // Lambda: function at /var/task/netlify/functions/, bundled fonts at /var/task/dist/server/fonts
+    path.resolve(bundleDir, "../../dist/server/fonts"),
     path.resolve(process.cwd(), "dist/server/fonts"),
     // repo root dev / `pnpm start` from the repo root
     path.resolve(process.cwd(), "server/fonts"),
