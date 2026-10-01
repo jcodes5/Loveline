@@ -407,6 +407,57 @@ export function createQuoteCardRouter() {
     }
   });
 
+  router.get("/:id/image", async (request, response) => {
+    try {
+      const auth = await authenticate(request);
+      if (!auth) {
+        response.status(401).json({ error: "Sign in to view quote card image." });
+        return;
+      }
+      const { supabase } = auth;
+
+      const { data: card, error: lookupError } = await supabase
+        .from("quote_cards")
+        .select("rendered_public_id")
+        .eq("id", request.params.id)
+        .maybeSingle();
+      if (lookupError) {
+        response.status(500).json({ error: "We couldn't load that quote card right now." });
+        return;
+      }
+      if (!card?.rendered_public_id) {
+        response.status(404).json({ error: "Quote card image not found." });
+        return;
+      }
+
+      const cloud = configureCloudinary();
+      const signedUrl = cloud.url(card.rendered_public_id, {
+        resource_type: "image",
+        type: "authenticated",
+        secure: true,
+        sign_url: true,
+        transformation: [{ fetch_format: "png" }],
+      });
+
+      const fetchResponse = await fetch(signedUrl);
+      if (!fetchResponse.ok) {
+        response.status(500).json({ error: "We couldn't load that quote card right now." });
+        return;
+      }
+
+      const blob = await fetchResponse.blob();
+      const arrayBuffer = await blob.arrayBuffer();
+      const buffer = Buffer.from(arrayBuffer);
+
+      response.setHeader("content-type", "image/png");
+      response.setHeader("cache-control", "public, max-age=31536000, immutable");
+      response.send(buffer);
+    } catch (error) {
+      console.error("Quote card image proxy failed:", error);
+      response.status(500).json({ error: "We couldn't load that quote card right now." });
+    }
+  });
+
   router.delete("/:id", async (request, response) => {
     try {
       const auth = await authenticate(request);

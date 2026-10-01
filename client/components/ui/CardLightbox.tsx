@@ -65,7 +65,9 @@ export function CardLightbox({ card, onClose }: CardLightboxProps) {
 
   if (!card) return null;
 
-  const imageUrl = card.imageUrl ?? quoteCardImageUrl(card.svg);
+  const imageUrl = card.imageUrl
+    ? `/api/quote-cards/${encodeURIComponent(card.id)}/image`
+    : quoteCardImageUrl(card.svg);
 
   return (
     <div
@@ -105,14 +107,14 @@ export function CardLightbox({ card, onClose }: CardLightboxProps) {
         style={{ maxHeight: "calc(100dvh - 1.5rem)" }}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Card image shrinks to fill available space without overflowing */}
-        <div className="relative min-h-0 flex-1 w-full overflow-hidden rounded-2xl sm:rounded-[28px] shadow-2xl ring-1 ring-white/10 animate-in zoom-in-95 duration-200">
+        {/* Card image — zoom/pan on desktop, scroll on mobile */}
+        <div className="relative min-h-0 flex-1 w-full overflow-auto rounded-2xl sm:rounded-[28px] shadow-2xl ring-1 ring-white/10 animate-in zoom-in-95 duration-200 touch-pan-x touch-pan-y">
           <img
             src={imageUrl}
             alt={`A card by ${card.quoteAuthor}`}
-            className="block h-full w-full object-contain"
+            className="block w-full object-contain"
             draggable={false}
-            style={{ minHeight: 0 }}
+            style={{ minHeight: 0, maxWidth: "100%" }}
           />
         </div>
 
