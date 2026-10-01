@@ -34,6 +34,21 @@ describe("quote card renderer", () => {
     expect(svg).toContain('fill="#fff8f6"');
   }, 20000);
 
+  it("keeps a visible palette background when photo mode has no image", async () => {
+    const svg = await renderQuoteCardSvg({
+      quoteText: "A thought",
+      quoteAuthor: "Loveline",
+      quoteSource: null,
+      palette: "rose",
+      template: "minimal",
+      bgType: "image",
+      backgroundDataUrl: null,
+    });
+
+    expect(svg).toContain('<rect width="1200" height="1200" fill="#fff1f3"/>');
+    expect(svg).not.toContain('<image ');
+  }, 20000);
+
   it("keeps an uploaded background behind the quote text", async () => {
     const svg = await renderQuoteCardSvg({
       quoteText: "Visible over the photo",

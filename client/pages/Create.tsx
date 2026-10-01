@@ -195,15 +195,16 @@ export default function Create() {
   }, [incoming, dismissIncoming, savedCard, toast]);
 
   function cardInput(): QuoteCardInput {
+    const hasBackgroundImage = bgType === "image" && Boolean(backgroundDataUrl);
     return {
       quoteText: form.quoteText.trim(),
       quoteAuthor: form.quoteAuthor.trim() || "— your poet",
       quoteSource: form.quoteSource.trim() || null,
       palette,
       template: dbTemplate[template],
-      bgType,
+      bgType: hasBackgroundImage ? "image" : bgType === "gradient" ? "gradient" : "template",
       gradient: bgType === "gradient" ? gradient : null,
-      backgroundDataUrl: bgType === "image" ? backgroundDataUrl : null,
+      backgroundDataUrl: hasBackgroundImage ? backgroundDataUrl : null,
       alignment,
       showDate,
     };
@@ -613,7 +614,7 @@ export default function Create() {
                   <div className="pointer-events-none absolute top-6 bottom-6 right-6 left-6 rounded-none border-2" style={{ borderColor: `${accentColor}88` }} aria-hidden="true" />
                 )}
 
-                <div className={`mt-12 flex min-h-[240px] flex-1 flex-col justify-center ${alignClass}`}>
+                <div className={`mt-12 flex min-h flex-1 flex-col justify-center ${alignClass}`}>
                   <p className="font-display font-semibold leading-[1.08]" style={{ fontSize: previewFontSize }}>
                     {previewQuote.map((line, index) => (
                       <span className="block" key={`${line}-${index}`}>
