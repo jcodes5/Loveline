@@ -53,7 +53,7 @@ export function CardLightbox({ card, onClose }: CardLightboxProps) {
     <div
       ref={overlayRef}
       className={cn(
-        "fixed inset-0 z-50 flex items-center justify-center",
+        "fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6",
         "bg-black/75 backdrop-blur-md",
         "animate-in fade-in duration-200",
       )}
@@ -61,7 +61,6 @@ export function CardLightbox({ card, onClose }: CardLightboxProps) {
       aria-modal="true"
       aria-label={`Quote card by ${card.quoteAuthor}`}
       onClick={(e) => {
-        // Close when clicking the backdrop (not the card itself)
         if (e.target === overlayRef.current) onClose();
       }}
     >
@@ -75,23 +74,25 @@ export function CardLightbox({ card, onClose }: CardLightboxProps) {
         <X className="size-5" aria-hidden="true" />
       </button>
 
+      {/* Outer container — never taller than the viewport */}
       <div
-        className="relative mx-4 flex w-full max-w-2xl flex-col items-center gap-5"
+        className="relative flex w-full max-w-2xl flex-col gap-3"
+        style={{ maxHeight: "calc(100dvh - 2rem)" }}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Card image */}
-        <div className="w-full overflow-hidden rounded-[28px] shadow-2xl ring-1 ring-white/10 animate-in zoom-in-95 duration-200">
+        {/* Card image shrinks to fill available space without overflowing */}
+        <div className="min-h-0 flex-1 overflow-hidden rounded-[28px] shadow-2xl ring-1 ring-white/10 animate-in zoom-in-95 duration-200">
           <img
             src={imageUrl}
             alt={`A card by ${card.quoteAuthor}`}
-            className="aspect-square w-full object-cover"
+            className="block h-full w-full object-contain"
             draggable={false}
           />
         </div>
 
-        {/* Actions bar */}
-        <div className="flex w-full items-center justify-between gap-4 rounded-2xl bg-white/10 px-5 py-3.5 backdrop-blur-sm">
-          <div className="min-w-0">
+        {/* Actions bar — always visible at the bottom, wraps on narrow screens */}
+        <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 rounded-2xl bg-white/10 px-4 py-3 backdrop-blur-sm">
+          <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-semibold text-white">
               &ldquo;{card.quoteText.length > 80 ? card.quoteText.slice(0, 80) + "…" : card.quoteText}&rdquo;
             </p>
