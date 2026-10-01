@@ -409,12 +409,35 @@ export function createQuoteCardRouter() {
 
   router.get("/:id/image", async (request, response) => {
     try {
-      const auth = await authenticate(request);
-      if (!auth) {
+      // Support token via Authorization header OR query param (for <img> tags)
+      const authHeader = request.headers.authorization;
+      const tokenFromQuery = request.query.token as string | undefined;
+      const token = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : tokenFromQuery;
+
+      if (!token) {
         response.status(401).json({ error: "Sign in to view quote card image." });
         return;
       }
-      const { supabase } = auth;
+
+      const supabaseUrl = process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL;
+      const supabaseAnonKey = process.env.SUPABASE_ANON_KEY ?? process.env.VITE_SUPABASE_ANON_KEY;
+
+      if (!supabaseUrl || !supabaseAnonKey) {
+        response.status(500).json({ error: "Server configuration error." });
+        return;
+      }
+
+      const { createClient } = await import("@supabase/supabase-js");
+      const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+        global: { headers: { Authorization: `Bearer ${token}` } },
+        auth: { autoRefreshToken: false, persistSession: false },
+      });
+
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) {
+        response.status(401).json({ error: "Sign in to view quote card image." });
+        return;
+      }
 
       const { data: card, error: lookupError } = await supabase
         .from("quote_cards")

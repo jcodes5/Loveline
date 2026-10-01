@@ -66,7 +66,7 @@ export function CardLightbox({ card, onClose }: CardLightboxProps) {
   if (!card) return null;
 
   const imageUrl = card.imageUrl
-    ? `/api/quote-cards/${encodeURIComponent(card.id)}/image`
+    ? `/api/quote-cards/${encodeURIComponent(card.id)}/image?token=${encodeURIComponent(session?.access_token ?? "")}`
     : quoteCardImageUrl(card.svg);
 
   return (
