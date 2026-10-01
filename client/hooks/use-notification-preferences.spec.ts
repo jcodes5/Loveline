@@ -24,6 +24,15 @@ describe("notification preferences", () => {
       personalMessagesEnabled: false,
       personalMessagesTime: "18:30",
       personalMessagesTimezone: "America/New_York",
+      morningEnabled: true,
+      morningTime: "08:00",
+      nightEnabled: true,
+      nightTime: "21:00",
+      specialDatesEnabled: true,
+      specialDatesTime: "09:00",
+      quietHoursEnabled: false,
+      quietHoursStart: "22:00",
+      quietHoursEnd: "07:00",
     });
   });
 });

@@ -354,6 +354,58 @@ export function createQuoteCardRouter() {
     }
   });
 
+  router.get("/:id/download", async (request, response) => {
+    try {
+      const auth = await authenticate(request);
+      if (!auth) {
+        response.status(401).json({ error: "Sign in to download a quote card." });
+        return;
+      }
+      const { supabase } = auth;
+
+      const { data: card, error: lookupError } = await supabase
+        .from("quote_cards")
+        .select("rendered_public_id, rendered_format")
+        .eq("id", request.params.id)
+        .maybeSingle();
+      if (lookupError) {
+        response.status(500).json({ error: "We couldn't download that quote card right now." });
+        return;
+      }
+      if (!card?.rendered_public_id || !card.rendered_format) {
+        response.status(404).json({ error: "Quote card image not found." });
+        return;
+      }
+
+      const cloud = configureCloudinary();
+      const signedUrl = cloud.url(card.rendered_public_id, {
+        resource_type: "image",
+        type: "authenticated",
+        secure: true,
+        sign_url: true,
+        format: card.rendered_format,
+      });
+
+      const fetchResponse = await fetch(signedUrl);
+      if (!fetchResponse.ok) {
+        response.status(500).json({ error: "We couldn't download that quote card right now." });
+        return;
+      }
+
+      const blob = await fetchResponse.blob();
+      const arrayBuffer = await blob.arrayBuffer();
+      const buffer = Buffer.from(arrayBuffer);
+
+      response.setHeader("content-type", `image/${card.rendered_format}`);
+      response.setHeader("content-disposition", `attachment; filename="loveline-card-${request.params.id}.png"`);
+      response.setHeader("cache-control", "no-store");
+      response.send(buffer);
+    } catch (error) {
+      console.error("Quote card download failed:", error);
+      response.status(500).json({ error: "We couldn't download that quote card right now." });
+    }
+  });
+
   router.delete("/:id", async (request, response) => {
     try {
       const auth = await authenticate(request);

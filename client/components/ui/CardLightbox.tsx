@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { Download, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { quoteCardImageUrl, type QuoteCard } from "@/hooks/use-quote-cards";
+import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
 
 interface CardLightboxProps {
@@ -11,6 +12,7 @@ interface CardLightboxProps {
 
 export function CardLightbox({ card, onClose }: CardLightboxProps) {
   const overlayRef = useRef<HTMLDivElement>(null);
+  const { session } = useAuth();
 
   // Close on Escape key
   useEffect(() => {
@@ -34,15 +36,31 @@ export function CardLightbox({ card, onClose }: CardLightboxProps) {
     };
   }, [card]);
 
-  function handleDownload() {
-    if (!card) return;
-    const imageUrl = card.imageUrl ?? quoteCardImageUrl(card.svg);
-    const anchor = document.createElement("a");
-    anchor.href = imageUrl;
-    anchor.download = `loveline-card-${card.id}.${card.imageUrl ? "png" : "svg"}`;
-    document.body.appendChild(anchor);
-    anchor.click();
-    anchor.remove();
+  async function handleDownload() {
+    if (!card || !session?.access_token) return;
+
+    try {
+      const response = await fetch(`/api/quote-cards/${encodeURIComponent(card.id)}/download`, {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+
+      if (!response.ok) {
+        throw new Error("Download failed");
+      }
+
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = blobUrl;
+      anchor.download = `loveline-card-${card.id}.png`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 10_000);
+    } catch {
+      const imageUrl = card.imageUrl ?? quoteCardImageUrl(card.svg);
+      window.open(imageUrl, "_blank");
+    }
   }
 
   if (!card) return null;
@@ -53,9 +71,10 @@ export function CardLightbox({ card, onClose }: CardLightboxProps) {
     <div
       ref={overlayRef}
       className={cn(
-        "fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6",
+        "fixed inset-0 z-50 flex items-center justify-center",
         "bg-black/75 backdrop-blur-md",
         "animate-in fade-in duration-200",
+        "p-3 sm:p-4 md:p-6",
       )}
       role="dialog"
       aria-modal="true"
@@ -64,39 +83,46 @@ export function CardLightbox({ card, onClose }: CardLightboxProps) {
         if (e.target === overlayRef.current) onClose();
       }}
     >
-      {/* Close button */}
+      {/* Close button - more accessible on mobile */}
       <button
         type="button"
         onClick={onClose}
         aria-label="Close card view"
-        className="absolute right-4 top-4 z-10 grid size-10 place-items-center rounded-full bg-white/10 text-white backdrop-blur-sm transition hover:bg-white/20 active:scale-95"
+        className={cn(
+          "absolute z-10 grid size-10 place-items-center rounded-full",
+          "bg-white/10 text-white backdrop-blur-sm transition",
+          "hover:bg-white/20 active:scale-95",
+          "top-3 right-3 sm:top-4 sm:right-4",
+          "touch-target",
+        )}
       >
         <X className="size-5" aria-hidden="true" />
       </button>
 
       {/* Outer container — never taller than the viewport */}
       <div
-        className="relative flex w-full max-w-2xl flex-col gap-3"
-        style={{ maxHeight: "calc(100dvh - 2rem)" }}
+        className="relative flex w-full max-w-[90vw] sm:max-w-[480px] md:max-w-[600px] lg:max-w-[720px] flex-col gap-3"
+        style={{ maxHeight: "calc(100dvh - 1.5rem)" }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Card image shrinks to fill available space without overflowing */}
-        <div className="min-h-0 flex-1 overflow-hidden rounded-[28px] shadow-2xl ring-1 ring-white/10 animate-in zoom-in-95 duration-200">
+        <div className="relative min-h-0 flex-1 w-full overflow-hidden rounded-2xl sm:rounded-[28px] shadow-2xl ring-1 ring-white/10 animate-in zoom-in-95 duration-200">
           <img
             src={imageUrl}
             alt={`A card by ${card.quoteAuthor}`}
             className="block h-full w-full object-contain"
             draggable={false}
+            style={{ minHeight: 0 }}
           />
         </div>
 
         {/* Actions bar — always visible at the bottom, wraps on narrow screens */}
-        <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 rounded-2xl bg-white/10 px-4 py-3 backdrop-blur-sm">
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-semibold text-white">
-              &ldquo;{card.quoteText.length > 80 ? card.quoteText.slice(0, 80) + "…" : card.quoteText}&rdquo;
+        <div className="flex shrink-0 flex-col sm:flex-row items-center justify-between gap-3 rounded-2xl bg-white/10 px-4 py-3 backdrop-blur-sm">
+          <div className="min-w-0 w-full text-center sm:text-left">
+            <p className="truncate text-sm sm:text-base font-semibold text-white">
+              &ldquo;{card.quoteText.length > 100 ? card.quoteText.slice(0, 100) + "…" : card.quoteText}&rdquo;
             </p>
-            <p className="mt-0.5 truncate text-xs text-white/60">
+            <p className="mt-1 truncate text-xs sm:text-sm text-white/60">
               &mdash; {card.quoteAuthor}
               {card.quoteSource ? `, ${card.quoteSource}` : ""}
             </p>
@@ -104,11 +130,11 @@ export function CardLightbox({ card, onClose }: CardLightboxProps) {
           <Button
             type="button"
             onClick={handleDownload}
-            className="shrink-0 rounded-full bg-white text-black hover:bg-white/90 active:scale-95"
+            className="w-full sm:w-auto shrink-0 rounded-full bg-white text-black hover:bg-white/90 active:scale-95 touch-target"
             size="sm"
           >
             <Download className="size-4" aria-hidden="true" />
-            Download
+            <span className="hidden sm:inline">Download</span>
           </Button>
         </div>
       </div>

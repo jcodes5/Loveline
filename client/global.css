@@ -124,6 +124,11 @@
     font-family: "Cormorant Garamond", Georgia, serif;
   }
 
+  .touch-target {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
   .text-balance {
     text-wrap: balance;
   }
