@@ -5,6 +5,7 @@ import { Link } from "react-router-dom";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { CardLightbox } from "@/components/ui/CardLightbox";
 import { HeartBeat } from "@/components/motion/HeartBeat";
 import { Reveal, Stagger, StaggerItem } from "@/components/motion/Reveal";
 import { useToast } from "@/hooks/use-toast";
@@ -30,6 +31,7 @@ export default function Messages() {
   const quoteCards = useQuoteCards();
   const reactions = useLoveReactions();
   const [notes, setNotes] = useState<Record<string, string>>({});
+  const [lightboxCard, setLightboxCard] = useState<QuoteCard | null>(null);
 
   const byCard = useMemo(() => {
     const map = new Map<string, LoveReaction[]>();
@@ -178,9 +180,14 @@ export default function Messages() {
                   return (
                     <StaggerItem key={card.id}>
                       <article className="card-lift group overflow-hidden rounded-card border border-border bg-surface shadow-subtle">
-                        <div className="overflow-hidden">
+                        <button
+                          type="button"
+                          className="block w-full overflow-hidden cursor-zoom-in focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                          aria-label={`View card by ${card.quoteAuthor} in full size`}
+                          onClick={() => setLightboxCard(card)}
+                        >
                           <img src={quoteCardImageUrl(card.svg)} alt={`A card by ${card.quoteAuthor}`} loading="lazy" className="aspect-square w-full object-cover transition-transform duration-700 group-hover:scale-[1.03]" />
-                        </div>
+                        </button>
                         <div className="p-5 sm:p-6">
                           <div className="flex items-center justify-between gap-3">
                             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary-dark">{sentByMe ? "You sent this" : "Your partner sent this"}</p>
@@ -228,6 +235,7 @@ export default function Messages() {
           )}
         </>
       )}
+      <CardLightbox card={lightboxCard} onClose={() => setLightboxCard(null)} />
     </div>
   );
 }

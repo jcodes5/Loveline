@@ -13,6 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRelationship } from "@/contexts/RelationshipContext";
 import { Reveal, Stagger, StaggerItem } from "@/components/motion/Reveal";
+import { CardLightbox } from "@/components/ui/CardLightbox";
 import { useMemories } from "@/hooks/use-memories";
 import { useLoveReactions } from "@/hooks/use-love-reactions";
 import { useQuoteCards, quoteCardImageUrl, type QuoteCard, type QuoteCardAlignment, type QuoteCardInput, type QuoteCardPalette, type QuoteCardTemplate } from "@/hooks/use-quote-cards";
@@ -151,6 +152,7 @@ export default function Create() {
   const [poetOpen, setPoetOpen] = useState(false);
   const [poetTheme, setPoetTheme] = useState("");
   const [savedCard, setSavedCard] = useState<QuoteCard | null>(null);
+  const [lightboxCard, setLightboxCard] = useState<QuoteCard | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const colors = PALETTES[palette];
@@ -245,7 +247,9 @@ export default function Create() {
     document.body.appendChild(anchor);
     anchor.click();
     anchor.remove();
-    URL.revokeObjectURL(url);
+    // Delay revoke so the browser has time to initiate the download
+    // before the blob URL is freed — revoking synchronously caused a blank file.
+    setTimeout(() => URL.revokeObjectURL(url), 10_000);
   }
 
   async function handleScrapbook() {
@@ -646,9 +650,14 @@ export default function Create() {
               {quoteCards.cards.map((card) => (
                 <StaggerItem key={card.id}>
                   <article className="card-lift group overflow-hidden rounded-card border border-border bg-surface shadow-subtle">
-                    <div className="overflow-hidden">
+                    <button
+                      type="button"
+                      className="block w-full overflow-hidden cursor-zoom-in focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                      aria-label={`View card by ${card.quoteAuthor} in full size`}
+                      onClick={() => setLightboxCard(card)}
+                    >
                       <img src={card.imageUrl ?? quoteCardImageUrl(card.svg)} alt={`Card by ${card.quoteAuthor}`} loading="lazy" className="aspect-square w-full object-cover transition-transform duration-700 group-hover:scale-[1.03]" />
-                    </div>
+                    </button>
                     <div className="flex items-center justify-between gap-3 p-4">
                       <div className="min-w-0">
                         <p className="truncate text-sm font-semibold">{card.quoteAuthor}</p>
@@ -668,6 +677,7 @@ export default function Create() {
         </section>
       </Reveal>
     </div>
+    <CardLightbox card={lightboxCard} onClose={() => setLightboxCard(null)} />
   );
 
   async function handleRemove(card: QuoteCard) {
