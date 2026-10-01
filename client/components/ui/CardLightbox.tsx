@@ -15,24 +15,14 @@ export function CardLightbox({ card, onClose }: CardLightboxProps) {
   const { session } = useAuth();
   const [downloading, setDownloading] = useState(false);
 
-  const getDisplayImageUrl = () => {
-    if (card?.imageUrl && session?.access_token) {
-      return `/api/quote-cards/${encodeURIComponent(card.id)}/image?token=${encodeURIComponent(session.access_token)}`;
-    }
-    if (card?.svg) {
-      return quoteCardImageUrl(card.svg);
-    }
-    return "";
-  };
-
-  const initialSrc = getDisplayImageUrl();
+  const initialSrc = card?.imageUrl || (card?.svg ? quoteCardImageUrl(card.svg) : "");
   const [imageSrc, setImageSrc] = useState(initialSrc);
 
   useEffect(() => {
     if (card) {
-      setImageSrc(getDisplayImageUrl());
+      setImageSrc(card.imageUrl || (card.svg ? quoteCardImageUrl(card.svg) : ""));
     }
-  }, [card, session?.access_token]);
+  }, [card]);
 
   // Close on Escape key
   useEffect(() => {
@@ -57,35 +47,38 @@ export function CardLightbox({ card, onClose }: CardLightboxProps) {
   }, [card]);
 
   async function handleDownload() {
-    if (!card || !session?.access_token) {
-      setDownloading(false);
-      return;
-    }
+    if (!card) return;
     setDownloading(true);
 
     try {
-      // 1. Primary method: Use the dedicated download endpoint which proxies the authenticated Cloudinary image
-      const downloadRes = await fetch(`/api/quote-cards/${encodeURIComponent(card.id)}/download`, {
-        headers: { Authorization: `Bearer ${session.access_token}` },
-      });
-
-      if (downloadRes.ok) {
-        const blob = await downloadRes.blob();
-        if (blob.size > 100) {
-          const blobUrl = URL.createObjectURL(blob);
-          const anchor = document.createElement("a");
-          anchor.href = blobUrl;
-          anchor.download = `loveline-card-${card.id || "quote"}.png`;
-          document.body.appendChild(anchor);
-          anchor.click();
-          anchor.remove();
-          setTimeout(() => URL.revokeObjectURL(blobUrl), 10_000);
-          return;
+      // 1. Primary method: If card has a direct imageUrl (Cloudinary PNG), fetch it as a blob.
+      // Cloudinary serves CORS headers ('*'), so fetching as blob creates a local blob URL.
+      // Downloading the local blob URL triggers a clean, genuine PNG file download that image viewers can open.
+      if (card.imageUrl) {
+        try {
+          const directRes = await fetch(card.imageUrl);
+          if (directRes.ok) {
+            const blob = await directRes.blob();
+            if (blob.size > 100) {
+              const blobUrl = URL.createObjectURL(blob);
+              const anchor = document.createElement("a");
+              anchor.href = blobUrl;
+              anchor.download = `loveline-card-${card.id || "quote"}.png`;
+              document.body.appendChild(anchor);
+              anchor.click();
+              anchor.remove();
+              setTimeout(() => URL.revokeObjectURL(blobUrl), 10_000);
+              return;
+            }
+          }
+        } catch (fetchErr) {
+          console.warn("Direct imageUrl fetch failed, trying render endpoint:", fetchErr);
         }
       }
 
-      // 2. Fallback: Use the /api/quote-cards/render endpoint to re-render
-      if (card.relationshipId) {
+      // 2. Secondary method: Use the /api/quote-cards/render endpoint.
+      // This uses @resvg/resvg-js on the server to render a true, native PNG with all bundled fonts.
+      if (session?.access_token && card.relationshipId) {
         try {
           const renderRes = await fetch("/api/quote-cards/render", {
             method: "POST",
@@ -127,7 +120,8 @@ export function CardLightbox({ card, onClose }: CardLightboxProps) {
         }
       }
 
-      // 3. Last resort: download the SVG file as a valid .svg vector file
+      // 3. Fallback: download the SVG file as a valid .svg vector file
+      // Any browser or vector image viewer can open .svg files without error.
       if (card.svg) {
         const svgBlob = new Blob([card.svg], { type: "image/svg+xml;charset=utf-8" });
         const blobUrl = URL.createObjectURL(svgBlob);
@@ -140,8 +134,17 @@ export function CardLightbox({ card, onClose }: CardLightboxProps) {
         setTimeout(() => URL.revokeObjectURL(blobUrl), 10_000);
         return;
       }
+
+      // 4. Last resort: open imageUrl in new tab
+      if (card.imageUrl) {
+        window.open(card.imageUrl, "_blank");
+      }
     } catch (err) {
       console.error("Download failed:", err);
+      const fallbackUrl = card.imageUrl || (card.svg ? quoteCardImageUrl(card.svg) : null);
+      if (fallbackUrl) {
+        window.open(fallbackUrl, "_blank");
+      }
     } finally {
       setDownloading(false);
     }
@@ -190,13 +193,13 @@ export function CardLightbox({ card, onClose }: CardLightboxProps) {
         {/* Card image */}
         <div className="relative min-h-0 flex-1 w-full overflow-auto rounded-2xl sm:rounded-[28px] shadow-2xl ring-1 ring-white/10 animate-in zoom-in-95 duration-200 touch-pan-x touch-pan-y">
           <img
-            src={imageSrc}
+            src={imageSrc || (card.svg ? quoteCardImageUrl(card.svg) : card.imageUrl ?? "")}
             alt={`A card by ${card.quoteAuthor}`}
             className="block w-full object-contain"
             draggable={false}
             style={{ minHeight: 0, maxWidth: "100%" }}
             onError={() => {
-              // If proxy fails, fallback to inline SVG vector representation
+              // If signed Cloudinary URL fails to load, seamlessly fallback to inline SVG vector representation
               if (card.svg) {
                 const svgUrl = quoteCardImageUrl(card.svg);
                 if (imageSrc !== svgUrl) {
