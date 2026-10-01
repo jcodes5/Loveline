@@ -372,7 +372,7 @@ export function createQuoteCardRouter() {
         response.status(500).json({ error: "We couldn't download that quote card right now." });
         return;
       }
-      if (!card?.rendered_public_id || !card.rendered_format) {
+      if (!card?.rendered_public_id) {
         response.status(404).json({ error: "Quote card image not found." });
         return;
       }
@@ -383,7 +383,7 @@ export function createQuoteCardRouter() {
         type: "authenticated",
         secure: true,
         sign_url: true,
-        format: card.rendered_format,
+        format: "png",
       });
 
       const fetchResponse = await fetch(signedUrl);
@@ -396,7 +396,7 @@ export function createQuoteCardRouter() {
       const arrayBuffer = await blob.arrayBuffer();
       const buffer = Buffer.from(arrayBuffer);
 
-      response.setHeader("content-type", `image/${card.rendered_format}`);
+      response.setHeader("content-type", "image/png");
       response.setHeader("content-disposition", `attachment; filename="loveline-card-${request.params.id}.png"`);
       response.setHeader("cache-control", "no-store");
       response.send(buffer);
