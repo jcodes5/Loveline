@@ -165,13 +165,13 @@ export default function Create() {
       ? GRADIENTS[gradient].foreground
       : bgType === "image"
         ? "#fff8f6"
-      : colors.foreground;
+        : colors.foreground;
   const accentColor =
     bgType === "gradient"
       ? GRADIENTS[gradient].accent
       : bgType === "image"
         ? "#f2c6d4"
-      : colors.accent;
+        : colors.accent;
   const brandColor =
     bgType === "gradient"
       ? GRADIENTS[gradient].brandForeground
@@ -345,7 +345,7 @@ export default function Create() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-6xl px-4 pb-16 pt-9 sm:px-6 md:pt-12 lg:px-8 lg:pb-20">
+    <><div className="mx-auto w-full max-w-6xl px-4 pb-16 pt-9 sm:px-6 md:pt-12 lg:px-8 lg:pb-20">
       <header className="border-b border-border/70 pb-8">
         <Link to="/" className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground">
           <ArrowLeft className="size-4" aria-hidden="true" />
@@ -368,261 +368,261 @@ export default function Create() {
 
       <Reveal className="mt-8" delay={0.05}>
         <div className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
-        <section className="rounded-card border border-border bg-surface p-5 shadow-subtle sm:p-7" aria-labelledby="studio-controls-title">
-          <div className="flex items-start gap-4">
-            <div className="grid size-11 shrink-0 place-items-center rounded-2xl bg-primary-soft text-primary-dark"><LayoutGrid className="size-5" aria-hidden="true" /></div>
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary-dark">Design</p>
-              <h2 id="studio-controls-title" className="font-display mt-1 text-2xl font-semibold tracking-[-0.03em]">Shape the card.</h2>
-              <p className="mt-2 text-sm leading-6 text-muted-foreground">Every change shows up live on the preview beside you.</p>
+          <section className="rounded-card border border-border bg-surface p-5 shadow-subtle sm:p-7" aria-labelledby="studio-controls-title">
+            <div className="flex items-start gap-4">
+              <div className="grid size-11 shrink-0 place-items-center rounded-2xl bg-primary-soft text-primary-dark"><LayoutGrid className="size-5" aria-hidden="true" /></div>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary-dark">Design</p>
+                <h2 id="studio-controls-title" className="font-display mt-1 text-2xl font-semibold tracking-[-0.03em]">Shape the card.</h2>
+                <p className="mt-2 text-sm leading-6 text-muted-foreground">Every change shows up live on the preview beside you.</p>
+              </div>
             </div>
-          </div>
 
-          <fieldset className="mt-8 space-y-3">
-            <legend className="text-sm font-medium">Template</legend>
-            <div className="grid gap-2 sm:grid-cols-2">
-              {(Object.keys(TEMPLATES) as StudioTemplate[]).map((key) => (
-                <button
-                  type="button"
-                  key={key}
-                  onClick={() => setTemplate(key)}
-                  className={`rounded-xl px-3 py-3 text-left text-sm transition-all duration-200 ${template === key ? "border-primary ring-2 ring-primary/20 shadow-subtle hover:-translate-y-0.5" : "border-border hover:-translate-y-0.5 hover:bg-surface-muted hover:shadow-subtle"} border active:scale-[0.97]`}
-                  style={{ backgroundColor: TEMPLATES[key].background }}
-                  aria-pressed={template === key}
-                >
-                  <span className="block font-semibold" style={{ color: TEMPLATES[key].foreground }}>{TEMPLATES[key].label}</span>
-                  <span className="mt-0.5 block text-xs opacity-70" style={{ color: TEMPLATES[key].foreground }}>{TEMPLATES[key].blurb}</span>
-                </button>
-              ))}
-            </div>
-          </fieldset>
-
-          <fieldset className="mt-7 space-y-3">
-            <legend className="text-sm font-medium">Background</legend>
-            <div className="grid gap-2 sm:grid-cols-3">
-              {([
-                { value: "template" as BgType, label: "Template art", icon: LayoutGrid },
-                { value: "gradient" as BgType, label: "Gradient", icon: Layers },
-                { value: "image" as BgType, label: "Photo", icon: ImageIcon },
-              ]).map(({ value, label, icon: Icon }) => (
-                <button
-                  type="button"
-                  key={value}
-                  onClick={() => setBgType(value)}
-                  className={`inline-flex items-center justify-center gap-1.5 rounded-xl border px-3 py-2.5 text-sm transition-all duration-200 hover:-translate-y-0.5 active:scale-[0.97] ${bgType === value ? "border-primary bg-primary-soft/50 text-primary-dark shadow-subtle" : "border-border hover:bg-surface-muted hover:shadow-subtle"}`}
-                  aria-pressed={bgType === value}
-                >
-                  <Icon className="size-4" aria-hidden="true" /> {label}
-                </button>
-              ))}
-            </div>
-            {bgType === "gradient" && (
+            <fieldset className="mt-8 space-y-3">
+              <legend className="text-sm font-medium">Template</legend>
               <div className="grid gap-2 sm:grid-cols-2">
-                {(Object.keys(GRADIENTS) as GradientKey[]).map((key) => (
+                {(Object.keys(TEMPLATES) as StudioTemplate[]).map((key) => (
                   <button
                     type="button"
                     key={key}
-                    onClick={() => setGradient(key)}
-                    className={`rounded-xl border px-3 py-2.5 text-left text-sm transition-all duration-200 hover:-translate-y-0.5 active:scale-[0.97] ${gradient === key ? "border-primary ring-2 ring-primary/20 shadow-subtle" : "border-border hover:bg-surface-muted hover:shadow-subtle"}`}
-                    aria-pressed={gradient === key}
+                    onClick={() => setTemplate(key)}
+                    className={`rounded-xl px-3 py-3 text-left text-sm transition-all duration-200 ${template === key ? "border-primary ring-2 ring-primary/20 shadow-subtle hover:-translate-y-0.5" : "border-border hover:-translate-y-0.5 hover:bg-surface-muted hover:shadow-subtle"} border active:scale-[0.97]`}
+                    style={{ backgroundColor: TEMPLATES[key].background }}
+                    aria-pressed={template === key}
                   >
-                    <span className="block h-2.5 w-full rounded-full" style={{ background: GRADIENTS[key].css }} aria-hidden="true" />
-                    <span className="mt-1.5 block font-medium">{GRADIENTS[key].label}</span>
+                    <span className="block font-semibold" style={{ color: TEMPLATES[key].foreground }}>{TEMPLATES[key].label}</span>
+                    <span className="mt-0.5 block text-xs opacity-70" style={{ color: TEMPLATES[key].foreground }}>{TEMPLATES[key].blurb}</span>
                   </button>
                 ))}
               </div>
-            )}
-            {bgType === "image" && (
-              <div className="space-y-3">
-                <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleImageFile} />
-                <Button type="button" variant="outline" className="w-full rounded-full" onClick={() => fileInputRef.current?.click()}>
-                  {backgroundDataUrl ? <RefreshCw className="size-4" aria-hidden="true" /> : <ImageIcon className="size-4" aria-hidden="true" />}
-                  {backgroundDataUrl ? "Choose a different photo" : "Choose a photo"}
-                </Button>
-                {backgroundDataUrl && (
-                  <img src={backgroundDataUrl} alt="Card background preview" className="h-28 w-full rounded-xl object-cover" />
-                )}
-              </div>
-            )}
-          </fieldset>
+            </fieldset>
 
-          <fieldset className="mt-7 space-y-3">
-            <legend className="text-sm font-medium">Alignment</legend>
-            <div className="grid grid-cols-3 gap-2">
-              {ALIGNMENTS.map(({ value, label, icon: Icon }) => (
-                <button
-                  type="button"
-                  key={value}
-                  onClick={() => setAlignment(value)}
-                  className={`inline-flex items-center justify-center gap-1.5 rounded-xl border px-3 py-2.5 text-sm transition-all duration-200 hover:-translate-y-0.5 active:scale-[0.97] ${alignment === value ? "border-primary bg-primary-soft/50 text-primary-dark shadow-subtle" : "border-border hover:bg-surface-muted hover:shadow-subtle"}`}
-                  aria-pressed={alignment === value}
-                >
-                  <Icon className="size-4" aria-hidden="true" /> {label}
-                </button>
-              ))}
-            </div>
-          </fieldset>
-
-          <fieldset className="mt-7 space-y-3">
-            <legend className="text-sm font-medium">Feeling</legend>
-            <div className="grid gap-2 sm:grid-cols-3">
-              {(Object.keys(PALETTES) as QuoteCardPalette[]).map((key) => (
-                <button
-                  type="button"
-                  key={key}
-                  onClick={() => setPalette(key)}
-                  style={{ backgroundColor: PALETTES[key].background, color: PALETTES[key].foreground }}
-                  className={`rounded-xl border px-3 py-3 text-left text-sm transition-all duration-200 hover:-translate-y-0.5 active:scale-[0.97] ${palette === key ? "border-primary ring-2 ring-primary/20 shadow-subtle" : "border-border hover:bg-surface-muted hover:shadow-subtle"}`}
-                  aria-pressed={palette === key}
-                >
-                  <span className="block size-3 rounded-full" style={{ backgroundColor: PALETTES[key].accent }} aria-hidden="true" />
-                  <span className="mt-2 block font-semibold">{PALETTES[key].label}</span>
-                </button>
-              ))}
-            </div>
-          </fieldset>
-
-          <div className="mt-7 flex items-center justify-between gap-4 rounded-xl border border-border bg-surface-muted/40 px-4 py-3">
-            <span className="inline-flex items-center gap-2 text-sm font-medium">
-              <CalendarHeart className="size-4 text-primary" aria-hidden="true" /> Show today's date
-            </span>
-            <Switch checked={showDate} onCheckedChange={setShowDate} aria-label="Show today's date on the card" />
-          </div>
-
-          <div className="mt-7 space-y-2">
-            <Label htmlFor="quote-text">Words</Label>
-            <Textarea id="quote-text" value={form.quoteText} onChange={(event) => setForm((current) => ({ ...current, quoteText: event.target.value }))} className="min-h-36 rounded-xl leading-7" placeholder="Write your own words, or let our poet try." maxLength={600} disabled={quoteCards.saving || generating} />
-          </div>
-          <div className="mt-4 grid gap-5 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label htmlFor="quote-author">Author line</Label>
-              <Input id="quote-author" value={form.quoteAuthor} onChange={(event) => setForm((current) => ({ ...current, quoteAuthor: event.target.value }))} className="h-11 rounded-xl" placeholder="Jane Austen" maxLength={160} disabled={quoteCards.saving} />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="quote-source">Source <span className="font-normal text-muted-foreground">(optional)</span></Label>
-              <Input id="quote-source" value={form.quoteSource} onChange={(event) => setForm((current) => ({ ...current, quoteSource: event.target.value }))} className="h-11 rounded-xl" placeholder="Sense and Sensibility" maxLength={160} disabled={quoteCards.saving} />
-            </div>
-          </div>
-
-          {poetOpen && (
-            <div className="mt-6 space-y-4 rounded-2xl border border-primary/15 bg-primary-soft/30 p-5" aria-labelledby="poet-title">
-              <div>
-                <p className="inline-flex items-center gap-2 text-sm font-semibold" id="poet-title"><BookOpen className="size-4 text-primary" aria-hidden="true" />From our poet</p>
-                <p className="mt-1 text-sm leading-6 text-muted-foreground">Pick a start, or give the poet a thread to pull and it will write something new.</p>
-              </div>
-              <div className="space-y-2">
-                {STARTER_POEMS.map((poem) => (
-                  <button key={poem.title} type="button" onClick={() => useStarterPoem(poem)} className="block w-full rounded-xl border border-border bg-surface px-4 py-3 text-left text-sm transition hover:border-primary/30">
-                    <span className="block font-semibold">{poem.title}</span>
-                    <span className="mt-1 block whitespace-pre-line text-muted-foreground">{poem.poem.slice(0, 120)}{poem.poem.length > 120 ? "…" : ""}</span>
+            <fieldset className="mt-7 space-y-3">
+              <legend className="text-sm font-medium">Background</legend>
+              <div className="grid gap-2 sm:grid-cols-3">
+                {([
+                  { value: "template" as BgType, label: "Template art", icon: LayoutGrid },
+                  { value: "gradient" as BgType, label: "Gradient", icon: Layers },
+                  { value: "image" as BgType, label: "Photo", icon: ImageIcon },
+                ]).map(({ value, label, icon: Icon }) => (
+                  <button
+                    type="button"
+                    key={value}
+                    onClick={() => setBgType(value)}
+                    className={`inline-flex items-center justify-center gap-1.5 rounded-xl border px-3 py-2.5 text-sm transition-all duration-200 hover:-translate-y-0.5 active:scale-[0.97] ${bgType === value ? "border-primary bg-primary-soft/50 text-primary-dark shadow-subtle" : "border-border hover:bg-surface-muted hover:shadow-subtle"}`}
+                    aria-pressed={bgType === value}
+                  >
+                    <Icon className="size-4" aria-hidden="true" /> {label}
                   </button>
                 ))}
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="poet-theme">A thread to pull <span className="font-normal text-muted-foreground">(optional)</span></Label>
-                <Input id="poet-theme" value={poetTheme} onChange={(event) => setPoetTheme(event.target.value)} className="h-11 rounded-xl" placeholder="Your laugh, Sunday mornings, the drive home" maxLength={160} />
-              </div>
-              <Button type="button" className="w-full rounded-full" onClick={() => void handleAskPoet()} disabled={generating}>
-                {generating ? <LoaderCircle className="size-4 animate-spin" aria-hidden="true" /> : <Wand2 className="size-4" aria-hidden="true" />}
-                {generating ? "Our poet is writing…" : "Ask our poet"}
-              </Button>
-            </div>
-          )}
-
-          <div className="mt-7 flex flex-col gap-3">
-            <div className="flex flex-wrap gap-2">
-              <Button type="button" variant="outline" className="flex-1 basis-40 rounded-full bg-surface" onClick={() => setPoetOpen((open) => !open)}>
-                <Feather className="size-4" aria-hidden="true" /> {poetOpen ? "Hide our poet" : "Ask our poet"}
-              </Button>
-              <Button type="button" variant="outline" className="flex-1 basis-40 rounded-full bg-surface" onClick={() => void handleCopy()}>
-                <Copy className="size-4" aria-hidden="true" /> Copy words
-              </Button>
-            </div>
-            <div className="grid gap-2 sm:grid-cols-2">
-              <Button type="button" className="h-11 rounded-full" onClick={() => void handleSave()} disabled={quoteCards.saving}>
-                {quoteCards.saving && <LoaderCircle className="size-4 animate-spin" aria-hidden="true" />}
-                <Check className="size-4" aria-hidden="true" /> Save to Loveline
-              </Button>
-              <Button type="button" className="h-11 rounded-full" onClick={() => void handleDownload()} disabled={quoteCards.saving}>
-                <Download className="size-4" aria-hidden="true" /> Download PNG
-              </Button>
-            </div>
-            <div className="grid gap-2 sm:grid-cols-2">
-              <Button type="button" variant="secondary" className="h-11 rounded-full" onClick={() => void handleScrapbook()} disabled={quoteCards.saving}>
-                <ImageIcon className="size-4" aria-hidden="true" /> Save to scrapbook
-              </Button>
-              <Button type="button" variant="secondary" className="h-11 rounded-full" onClick={() => void handleSend()} disabled={quoteCards.saving || quoteCards.loading}>
-                <Send className="size-4" aria-hidden="true" /> Send to partner
-              </Button>
-            </div>
-            <p className="text-xs text-muted-foreground">Both halves of your Loveline can save cards and send hearts to each other.</p>
-          </div>
-        </section>
-
-        <section aria-labelledby="studio-preview-title">
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary-dark">Live preview</p>
-              <h2 id="studio-preview-title" className="font-display mt-1 text-2xl font-semibold tracking-[-0.03em]">This is what you are making.</h2>
-            </div>
-            <span className="text-sm text-muted-foreground">{quoteCards.cards.length} saved</span>
-          </div>
-          <div className="mt-5 relative overflow-hidden rounded-[28px] shadow-card" style={bgStyle}>
-            {bgType === "image" && backgroundDataUrl && <img src={backgroundDataUrl} alt="" className="absolute inset-0 h-full w-full object-cover" aria-hidden="true" />}
-            {bgType === "image" && <div className="absolute inset-0 bg-black/45" aria-hidden="true" />}
-            <div key={`${template}-${bgType}-${palette}-${gradient}`} className="relative animate-pop-in flex aspect-square flex-col p-7 sm:p-10" style={{ color: textColor }}>
-              {template === "romantic" && (
-                <div className="flex items-start justify-between">
-                  <p className="text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: accentColor }}>LOVELINE</p>
-                  <Heart className="size-4 fill-current" style={{ color: accentColor }} aria-hidden="true" />
-                </div>
-              )}
-              {template === "minimal" && <p className="text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: brandColor }}>LOVELINE</p>}
-              {template === "polaroid" && (
-                <div className="absolute top-5 left-2/4 h-8 w-24 -translate-x-2/4 rotate-[-4deg] rounded-sm bg-white/70 shadow-sm" aria-hidden="true" />
-              )}
-              {template === "twilight" && (
-                <div className="flex items-start justify-between">
-                  <p className="text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: brandColor }}>LOVELINE</p>
-                  {[0, 1, 2].map((star) => <span key={star} className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: accentColor, opacity: 0.9 }} aria-hidden="true" />)}
-                </div>
-              )}
-              {template === "letterpress" && (
-                <div className="pointer-events-none absolute top-6 bottom-6 right-6 left-6 rounded-none border-2" style={{ borderColor: `${accentColor}88` }} aria-hidden="true" />
-              )}
-
-              <div className={`mt-12 flex min-h-[240px] flex-1 flex-col justify-center ${alignClass}`}>
-                <p className="font-display font-semibold leading-[1.08]" style={{ fontSize: previewFontSize }}>
-                  {previewQuote.map((line, index) => (
-                    <span className="block" key={`${line}-${index}`}>
-                      {index === 0 ? `“${line}` : line}{index === previewQuote.length - 1 ? "”" : ""}
-                    </span>
+              {bgType === "gradient" && (
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {(Object.keys(GRADIENTS) as GradientKey[]).map((key) => (
+                    <button
+                      type="button"
+                      key={key}
+                      onClick={() => setGradient(key)}
+                      className={`rounded-xl border px-3 py-2.5 text-left text-sm transition-all duration-200 hover:-translate-y-0.5 active:scale-[0.97] ${gradient === key ? "border-primary ring-2 ring-primary/20 shadow-subtle" : "border-border hover:bg-surface-muted hover:shadow-subtle"}`}
+                      aria-pressed={gradient === key}
+                    >
+                      <span className="block h-2.5 w-full rounded-full" style={{ background: GRADIENTS[key].css }} aria-hidden="true" />
+                      <span className="mt-1.5 block font-medium">{GRADIENTS[key].label}</span>
+                    </button>
                   ))}
-                </p>
-                {showDate && (
-                  <p className={`mt-5 text-sm tracking-wide ${previewTextClass}`} style={{ color: accentColor }}>
-                    {formatToday()}
-                  </p>
-                )}
-              </div>
+                </div>
+              )}
+              {bgType === "image" && (
+                <div className="space-y-3">
+                  <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleImageFile} />
+                  <Button type="button" variant="outline" className="w-full rounded-full" onClick={() => fileInputRef.current?.click()}>
+                    {backgroundDataUrl ? <RefreshCw className="size-4" aria-hidden="true" /> : <ImageIcon className="size-4" aria-hidden="true" />}
+                    {backgroundDataUrl ? "Choose a different photo" : "Choose a photo"}
+                  </Button>
+                  {backgroundDataUrl && (
+                    <img src={backgroundDataUrl} alt="Card background preview" className="h-28 w-full rounded-xl object-cover" />
+                  )}
+                </div>
+              )}
+            </fieldset>
 
-              <div className="mt-8 border-t pt-5" style={{ borderColor: `${accentColor}66` }}>
-                <div className={previewTextClass}>
-                  <p className="text-sm font-semibold">{form.quoteAuthor || "— your poet"}</p>
-                  {form.quoteSource && <p className="mt-1 text-sm opacity-65">{form.quoteSource}</p>}
+            <fieldset className="mt-7 space-y-3">
+              <legend className="text-sm font-medium">Alignment</legend>
+              <div className="grid grid-cols-3 gap-2">
+                {ALIGNMENTS.map(({ value, label, icon: Icon }) => (
+                  <button
+                    type="button"
+                    key={value}
+                    onClick={() => setAlignment(value)}
+                    className={`inline-flex items-center justify-center gap-1.5 rounded-xl border px-3 py-2.5 text-sm transition-all duration-200 hover:-translate-y-0.5 active:scale-[0.97] ${alignment === value ? "border-primary bg-primary-soft/50 text-primary-dark shadow-subtle" : "border-border hover:bg-surface-muted hover:shadow-subtle"}`}
+                    aria-pressed={alignment === value}
+                  >
+                    <Icon className="size-4" aria-hidden="true" /> {label}
+                  </button>
+                ))}
+              </div>
+            </fieldset>
+
+            <fieldset className="mt-7 space-y-3">
+              <legend className="text-sm font-medium">Feeling</legend>
+              <div className="grid gap-2 sm:grid-cols-3">
+                {(Object.keys(PALETTES) as QuoteCardPalette[]).map((key) => (
+                  <button
+                    type="button"
+                    key={key}
+                    onClick={() => setPalette(key)}
+                    style={{ backgroundColor: PALETTES[key].background, color: PALETTES[key].foreground }}
+                    className={`rounded-xl border px-3 py-3 text-left text-sm transition-all duration-200 hover:-translate-y-0.5 active:scale-[0.97] ${palette === key ? "border-primary ring-2 ring-primary/20 shadow-subtle" : "border-border hover:bg-surface-muted hover:shadow-subtle"}`}
+                    aria-pressed={palette === key}
+                  >
+                    <span className="block size-3 rounded-full" style={{ backgroundColor: PALETTES[key].accent }} aria-hidden="true" />
+                    <span className="mt-2 block font-semibold">{PALETTES[key].label}</span>
+                  </button>
+                ))}
+              </div>
+            </fieldset>
+
+            <div className="mt-7 flex items-center justify-between gap-4 rounded-xl border border-border bg-surface-muted/40 px-4 py-3">
+              <span className="inline-flex items-center gap-2 text-sm font-medium">
+                <CalendarHeart className="size-4 text-primary" aria-hidden="true" /> Show today's date
+              </span>
+              <Switch checked={showDate} onCheckedChange={setShowDate} aria-label="Show today's date on the card" />
+            </div>
+
+            <div className="mt-7 space-y-2">
+              <Label htmlFor="quote-text">Words</Label>
+              <Textarea id="quote-text" value={form.quoteText} onChange={(event) => setForm((current) => ({ ...current, quoteText: event.target.value }))} className="min-h-36 rounded-xl leading-7" placeholder="Write your own words, or let our poet try." maxLength={600} disabled={quoteCards.saving || generating} />
+            </div>
+            <div className="mt-4 grid gap-5 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="quote-author">Author line</Label>
+                <Input id="quote-author" value={form.quoteAuthor} onChange={(event) => setForm((current) => ({ ...current, quoteAuthor: event.target.value }))} className="h-11 rounded-xl" placeholder="Jane Austen" maxLength={160} disabled={quoteCards.saving} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="quote-source">Source <span className="font-normal text-muted-foreground">(optional)</span></Label>
+                <Input id="quote-source" value={form.quoteSource} onChange={(event) => setForm((current) => ({ ...current, quoteSource: event.target.value }))} className="h-11 rounded-xl" placeholder="Sense and Sensibility" maxLength={160} disabled={quoteCards.saving} />
+              </div>
+            </div>
+
+            {poetOpen && (
+              <div className="mt-6 space-y-4 rounded-2xl border border-primary/15 bg-primary-soft/30 p-5" aria-labelledby="poet-title">
+                <div>
+                  <p className="inline-flex items-center gap-2 text-sm font-semibold" id="poet-title"><BookOpen className="size-4 text-primary" aria-hidden="true" />From our poet</p>
+                  <p className="mt-1 text-sm leading-6 text-muted-foreground">Pick a start, or give the poet a thread to pull and it will write something new.</p>
+                </div>
+                <div className="space-y-2">
+                  {STARTER_POEMS.map((poem) => (
+                    <button key={poem.title} type="button" onClick={() => useStarterPoem(poem)} className="block w-full rounded-xl border border-border bg-surface px-4 py-3 text-left text-sm transition hover:border-primary/30">
+                      <span className="block font-semibold">{poem.title}</span>
+                      <span className="mt-1 block whitespace-pre-line text-muted-foreground">{poem.poem.slice(0, 120)}{poem.poem.length > 120 ? "…" : ""}</span>
+                    </button>
+                  ))}
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="poet-theme">A thread to pull <span className="font-normal text-muted-foreground">(optional)</span></Label>
+                  <Input id="poet-theme" value={poetTheme} onChange={(event) => setPoetTheme(event.target.value)} className="h-11 rounded-xl" placeholder="Your laugh, Sunday mornings, the drive home" maxLength={160} />
+                </div>
+                <Button type="button" className="w-full rounded-full" onClick={() => void handleAskPoet()} disabled={generating}>
+                  {generating ? <LoaderCircle className="size-4 animate-spin" aria-hidden="true" /> : <Wand2 className="size-4" aria-hidden="true" />}
+                  {generating ? "Our poet is writing…" : "Ask our poet"}
+                </Button>
+              </div>
+            )}
+
+            <div className="mt-7 flex flex-col gap-3">
+              <div className="flex flex-wrap gap-2">
+                <Button type="button" variant="outline" className="flex-1 basis-40 rounded-full bg-surface" onClick={() => setPoetOpen((open) => !open)}>
+                  <Feather className="size-4" aria-hidden="true" /> {poetOpen ? "Hide our poet" : "Ask our poet"}
+                </Button>
+                <Button type="button" variant="outline" className="flex-1 basis-40 rounded-full bg-surface" onClick={() => void handleCopy()}>
+                  <Copy className="size-4" aria-hidden="true" /> Copy words
+                </Button>
+              </div>
+              <div className="grid gap-2 sm:grid-cols-2">
+                <Button type="button" className="h-11 rounded-full" onClick={() => void handleSave()} disabled={quoteCards.saving}>
+                  {quoteCards.saving && <LoaderCircle className="size-4 animate-spin" aria-hidden="true" />}
+                  <Check className="size-4" aria-hidden="true" /> Save to Loveline
+                </Button>
+                <Button type="button" className="h-11 rounded-full" onClick={() => void handleDownload()} disabled={quoteCards.saving}>
+                  <Download className="size-4" aria-hidden="true" /> Download PNG
+                </Button>
+              </div>
+              <div className="grid gap-2 sm:grid-cols-2">
+                <Button type="button" variant="secondary" className="h-11 rounded-full" onClick={() => void handleScrapbook()} disabled={quoteCards.saving}>
+                  <ImageIcon className="size-4" aria-hidden="true" /> Save to scrapbook
+                </Button>
+                <Button type="button" variant="secondary" className="h-11 rounded-full" onClick={() => void handleSend()} disabled={quoteCards.saving || quoteCards.loading}>
+                  <Send className="size-4" aria-hidden="true" /> Send to partner
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">Both halves of your Loveline can save cards and send hearts to each other.</p>
+            </div>
+          </section>
+
+          <section aria-labelledby="studio-preview-title">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary-dark">Live preview</p>
+                <h2 id="studio-preview-title" className="font-display mt-1 text-2xl font-semibold tracking-[-0.03em]">This is what you are making.</h2>
+              </div>
+              <span className="text-sm text-muted-foreground">{quoteCards.cards.length} saved</span>
+            </div>
+            <div className="mt-5 relative overflow-hidden rounded-[28px] shadow-card" style={bgStyle}>
+              {bgType === "image" && backgroundDataUrl && <img src={backgroundDataUrl} alt="" className="absolute inset-0 h-full w-full object-cover" aria-hidden="true" />}
+              {bgType === "image" && <div className="absolute inset-0 bg-black/45" aria-hidden="true" />}
+              <div key={`${template}-${bgType}-${palette}-${gradient}`} className="relative animate-pop-in flex aspect-square flex-col p-7 sm:p-10" style={{ color: textColor }}>
+                {template === "romantic" && (
+                  <div className="flex items-start justify-between">
+                    <p className="text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: accentColor }}>LOVELINE</p>
+                    <Heart className="size-4 fill-current" style={{ color: accentColor }} aria-hidden="true" />
+                  </div>
+                )}
+                {template === "minimal" && <p className="text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: brandColor }}>LOVELINE</p>}
+                {template === "polaroid" && (
+                  <div className="absolute top-5 left-2/4 h-8 w-24 -translate-x-2/4 rotate-[-4deg] rounded-sm bg-white/70 shadow-sm" aria-hidden="true" />
+                )}
+                {template === "twilight" && (
+                  <div className="flex items-start justify-between">
+                    <p className="text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: brandColor }}>LOVELINE</p>
+                    {[0, 1, 2].map((star) => <span key={star} className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: accentColor, opacity: 0.9 }} aria-hidden="true" />)}
+                  </div>
+                )}
+                {template === "letterpress" && (
+                  <div className="pointer-events-none absolute top-6 bottom-6 right-6 left-6 rounded-none border-2" style={{ borderColor: `${accentColor}88` }} aria-hidden="true" />
+                )}
+
+                <div className={`mt-12 flex min-h-[240px] flex-1 flex-col justify-center ${alignClass}`}>
+                  <p className="font-display font-semibold leading-[1.08]" style={{ fontSize: previewFontSize }}>
+                    {previewQuote.map((line, index) => (
+                      <span className="block" key={`${line}-${index}`}>
+                        {index === 0 ? `“${line}` : line}{index === previewQuote.length - 1 ? "”" : ""}
+                      </span>
+                    ))}
+                  </p>
+                  {showDate && (
+                    <p className={`mt-5 text-sm tracking-wide ${previewTextClass}`} style={{ color: accentColor }}>
+                      {formatToday()}
+                    </p>
+                  )}
+                </div>
+
+                <div className="mt-8 border-t pt-5" style={{ borderColor: `${accentColor}66` }}>
+                  <div className={previewTextClass}>
+                    <p className="text-sm font-semibold">{form.quoteAuthor || "— your poet"}</p>
+                    {form.quoteSource && <p className="mt-1 text-sm opacity-65">{form.quoteSource}</p>}
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
 
-          {savedCard && (
-            <div className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-success/20 bg-success/10 p-3">
-              <span className="inline-flex items-center gap-2 text-sm font-medium text-success"><Check className="size-4" aria-hidden="true" />Saved and ready to revisit</span>
-              <span className="text-xs text-success/80">{displayDate(savedCard.createdAt)}</span>
-            </div>
-          )}
-        </section>
-      </div>
+            {savedCard && (
+              <div className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-success/20 bg-success/10 p-3">
+                <span className="inline-flex items-center gap-2 text-sm font-medium text-success"><Check className="size-4" aria-hidden="true" />Saved and ready to revisit</span>
+                <span className="text-xs text-success/80">{displayDate(savedCard.createdAt)}</span>
+              </div>
+            )}
+          </section>
+        </div>
       </Reveal>
 
       <Reveal className="mt-12" delay={0.05}>
@@ -676,8 +676,7 @@ export default function Create() {
           )}
         </section>
       </Reveal>
-    </div>
-    <CardLightbox card={lightboxCard} onClose={() => setLightboxCard(null)} />
+    </div><CardLightbox card={lightboxCard} onClose={() => setLightboxCard(null)} /></>
   );
 
   async function handleRemove(card: QuoteCard) {
