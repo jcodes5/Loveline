@@ -1,5 +1,5 @@
-import { useEffect, useRef } from "react";
-import { Download, X } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Download, Loader2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { quoteCardImageUrl, type QuoteCard } from "@/hooks/use-quote-cards";
 import { useAuth } from "@/contexts/AuthContext";
@@ -13,6 +13,16 @@ interface CardLightboxProps {
 export function CardLightbox({ card, onClose }: CardLightboxProps) {
   const overlayRef = useRef<HTMLDivElement>(null);
   const { session } = useAuth();
+  const [downloading, setDownloading] = useState(false);
+
+  const initialSrc = card?.imageUrl || (card?.svg ? quoteCardImageUrl(card.svg) : "");
+  const [imageSrc, setImageSrc] = useState(initialSrc);
+
+  useEffect(() => {
+    if (card) {
+      setImageSrc(card.imageUrl || (card.svg ? quoteCardImageUrl(card.svg) : ""));
+    }
+  }, [card]);
 
   // Close on Escape key
   useEffect(() => {
@@ -37,37 +47,110 @@ export function CardLightbox({ card, onClose }: CardLightboxProps) {
   }, [card]);
 
   async function handleDownload() {
-    if (!card || !session?.access_token) return;
+    if (!card) return;
+    setDownloading(true);
 
     try {
-      const response = await fetch(`/api/quote-cards/${encodeURIComponent(card.id)}/download`, {
-        headers: { Authorization: `Bearer ${session.access_token}` },
-      });
-
-      if (!response.ok) {
-        throw new Error("Download failed");
+      // 1. Primary method: If card has a direct imageUrl (Cloudinary PNG), fetch it as a blob.
+      // Cloudinary serves CORS headers ('*'), so fetching as blob creates a local blob URL.
+      // Downloading the local blob URL triggers a clean, genuine PNG file download that image viewers can open.
+      if (card.imageUrl) {
+        try {
+          const directRes = await fetch(card.imageUrl);
+          if (directRes.ok) {
+            const blob = await directRes.blob();
+            if (blob.size > 100) {
+              const blobUrl = URL.createObjectURL(blob);
+              const anchor = document.createElement("a");
+              anchor.href = blobUrl;
+              anchor.download = `loveline-card-${card.id || "quote"}.png`;
+              document.body.appendChild(anchor);
+              anchor.click();
+              anchor.remove();
+              setTimeout(() => URL.revokeObjectURL(blobUrl), 10_000);
+              return;
+            }
+          }
+        } catch (fetchErr) {
+          console.warn("Direct imageUrl fetch failed, trying render endpoint:", fetchErr);
+        }
       }
 
-      const blob = await response.blob();
-      const blobUrl = URL.createObjectURL(blob);
-      const anchor = document.createElement("a");
-      anchor.href = blobUrl;
-      anchor.download = `loveline-card-${card.id}.png`;
-      document.body.appendChild(anchor);
-      anchor.click();
-      anchor.remove();
-      setTimeout(() => URL.revokeObjectURL(blobUrl), 10_000);
-    } catch {
-      const imageUrl = card.imageUrl ?? quoteCardImageUrl(card.svg);
-      window.open(imageUrl, "_blank");
+      // 2. Secondary method: Use the /api/quote-cards/render endpoint.
+      // This uses @resvg/resvg-js on the server to render a true, native PNG with all bundled fonts.
+      if (session?.access_token && card.relationshipId) {
+        try {
+          const renderRes = await fetch("/api/quote-cards/render", {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${session.access_token}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              relationshipId: card.relationshipId,
+              quoteText: card.quoteText,
+              quoteAuthor: card.quoteAuthor,
+              quoteSource: card.quoteSource,
+              palette: card.palette,
+              template: card.template,
+              bgType: card.bgType,
+              gradient: card.gradient,
+              backgroundDataUrl: card.backgroundDataUrl,
+              alignment: card.alignment,
+              showDate: card.showDate,
+            }),
+          });
+
+          if (renderRes.ok) {
+            const blob = await renderRes.blob();
+            if (blob.size > 100) {
+              const blobUrl = URL.createObjectURL(blob);
+              const anchor = document.createElement("a");
+              anchor.href = blobUrl;
+              anchor.download = `loveline-card-${card.id || "quote"}.png`;
+              document.body.appendChild(anchor);
+              anchor.click();
+              anchor.remove();
+              setTimeout(() => URL.revokeObjectURL(blobUrl), 10_000);
+              return;
+            }
+          }
+        } catch (renderErr) {
+          console.warn("Server render endpoint failed:", renderErr);
+        }
+      }
+
+      // 3. Fallback: download the SVG file as a valid .svg vector file
+      // Any browser or vector image viewer can open .svg files without error.
+      if (card.svg) {
+        const svgBlob = new Blob([card.svg], { type: "image/svg+xml;charset=utf-8" });
+        const blobUrl = URL.createObjectURL(svgBlob);
+        const anchor = document.createElement("a");
+        anchor.href = blobUrl;
+        anchor.download = `loveline-card-${card.id || "quote"}.svg`;
+        document.body.appendChild(anchor);
+        anchor.click();
+        anchor.remove();
+        setTimeout(() => URL.revokeObjectURL(blobUrl), 10_000);
+        return;
+      }
+
+      // 4. Last resort: open imageUrl in new tab
+      if (card.imageUrl) {
+        window.open(card.imageUrl, "_blank");
+      }
+    } catch (err) {
+      console.error("Download failed:", err);
+      const fallbackUrl = card.imageUrl || (card.svg ? quoteCardImageUrl(card.svg) : null);
+      if (fallbackUrl) {
+        window.open(fallbackUrl, "_blank");
+      }
+    } finally {
+      setDownloading(false);
     }
   }
 
   if (!card) return null;
-
-  const imageUrl = card.imageUrl
-    ? `/api/quote-cards/${encodeURIComponent(card.id)}/image?token=${encodeURIComponent(session?.access_token ?? "")}`
-    : quoteCardImageUrl(card.svg);
 
   return (
     <div
@@ -85,7 +168,7 @@ export function CardLightbox({ card, onClose }: CardLightboxProps) {
         if (e.target === overlayRef.current) onClose();
       }}
     >
-      {/* Close button - more accessible on mobile */}
+      {/* Close button */}
       <button
         type="button"
         onClick={onClose}
@@ -107,18 +190,27 @@ export function CardLightbox({ card, onClose }: CardLightboxProps) {
         style={{ maxHeight: "calc(100dvh - 1.5rem)" }}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Card image — zoom/pan on desktop, scroll on mobile */}
+        {/* Card image */}
         <div className="relative min-h-0 flex-1 w-full overflow-auto rounded-2xl sm:rounded-[28px] shadow-2xl ring-1 ring-white/10 animate-in zoom-in-95 duration-200 touch-pan-x touch-pan-y">
           <img
-            src={imageUrl}
+            src={imageSrc || (card.svg ? quoteCardImageUrl(card.svg) : card.imageUrl ?? "")}
             alt={`A card by ${card.quoteAuthor}`}
             className="block w-full object-contain"
             draggable={false}
             style={{ minHeight: 0, maxWidth: "100%" }}
+            onError={() => {
+              // If signed Cloudinary URL fails to load, seamlessly fallback to inline SVG vector representation
+              if (card.svg) {
+                const svgUrl = quoteCardImageUrl(card.svg);
+                if (imageSrc !== svgUrl) {
+                  setImageSrc(svgUrl);
+                }
+              }
+            }}
           />
         </div>
 
-        {/* Actions bar — always visible at the bottom, wraps on narrow screens */}
+        {/* Actions bar */}
         <div className="flex shrink-0 flex-col sm:flex-row items-center justify-between gap-3 rounded-2xl bg-white/10 px-4 py-3 backdrop-blur-sm">
           <div className="min-w-0 w-full text-center sm:text-left">
             <p className="truncate text-sm sm:text-base font-semibold text-white">
@@ -132,11 +224,16 @@ export function CardLightbox({ card, onClose }: CardLightboxProps) {
           <Button
             type="button"
             onClick={handleDownload}
+            disabled={downloading}
             className="w-full sm:w-auto shrink-0 rounded-full bg-white text-black hover:bg-white/90 active:scale-95 touch-target"
             size="sm"
           >
-            <Download className="size-4" aria-hidden="true" />
-            <span className="hidden sm:inline">Download</span>
+            {downloading ? (
+              <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+            ) : (
+              <Download className="size-4" aria-hidden="true" />
+            )}
+            <span className="hidden sm:inline">{downloading ? "Downloading..." : "Download"}</span>
           </Button>
         </div>
       </div>

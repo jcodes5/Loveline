@@ -233,6 +233,28 @@ export default function Create() {
 
   async function handleDownload() {
     setFormError(null);
+    if (savedCard?.imageUrl) {
+      try {
+        const res = await fetch(savedCard.imageUrl);
+        if (res.ok) {
+          const blob = await res.blob();
+          if (blob.size > 100) {
+            const url = URL.createObjectURL(blob);
+            const anchor = document.createElement("a");
+            anchor.href = url;
+            anchor.download = "loveline-card.png";
+            document.body.appendChild(anchor);
+            anchor.click();
+            anchor.remove();
+            setTimeout(() => URL.revokeObjectURL(url), 10_000);
+            return;
+          }
+        }
+      } catch {
+        // Fallback to renderCardPng below
+      }
+    }
+
     const data = validateCard();
     if (!data) return;
     const response = await quoteCards.renderCardPng(cardInput());
