@@ -264,6 +264,7 @@ export function createQuoteCardRouter() {
           folder: "loveline/quote-cards",
           public_id: `${parsed.data.relationshipId}/${randomUUID()}`,
           overwrite: false,
+          format: "png",
         },
       );
 
@@ -383,7 +384,7 @@ export function createQuoteCardRouter() {
         type: "authenticated",
         secure: true,
         sign_url: true,
-        format: "png",
+        transformation: [{ fetch_format: "png" }],
       });
 
       const fetchResponse = await fetch(signedUrl);
