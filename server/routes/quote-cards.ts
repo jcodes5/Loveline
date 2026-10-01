@@ -389,6 +389,17 @@ export function createQuoteCardRouter() {
 
       const fetchResponse = await fetch(signedUrl);
       if (!fetchResponse.ok) {
+        console.error("Cloudinary fetch failed:", fetchResponse.status, fetchResponse.statusText);
+        response.status(500).json({ error: "We couldn't download that quote card right now." });
+        return;
+      }
+
+      // Verify the response is actually an image
+      const contentType = fetchResponse.headers.get("content-type");
+      if (!contentType?.startsWith("image/")) {
+        console.error("Cloudinary returned non-image content:", contentType);
+        const text = await fetchResponse.text();
+        console.error("Response body:", text.slice(0, 500));
         response.status(500).json({ error: "We couldn't download that quote card right now." });
         return;
       }
@@ -396,6 +407,13 @@ export function createQuoteCardRouter() {
       const blob = await fetchResponse.blob();
       const arrayBuffer = await blob.arrayBuffer();
       const buffer = Buffer.from(arrayBuffer);
+
+      // Verify we got actual image data (at least 100 bytes for a valid PNG)
+      if (buffer.length < 100) {
+        console.error("Downloaded image too small:", buffer.length);
+        response.status(500).json({ error: "We couldn't download that quote card right now." });
+        return;
+      }
 
       response.setHeader("content-type", "image/png");
       response.setHeader("content-disposition", `attachment; filename="loveline-card-${request.params.id}.png"`);
@@ -464,6 +482,17 @@ export function createQuoteCardRouter() {
 
       const fetchResponse = await fetch(signedUrl);
       if (!fetchResponse.ok) {
+        console.error("Cloudinary fetch failed:", fetchResponse.status, fetchResponse.statusText);
+        response.status(500).json({ error: "We couldn't load that quote card right now." });
+        return;
+      }
+
+      // Verify the response is actually an image
+      const contentType = fetchResponse.headers.get("content-type");
+      if (!contentType?.startsWith("image/")) {
+        console.error("Cloudinary returned non-image content:", contentType);
+        const text = await fetchResponse.text();
+        console.error("Response body:", text.slice(0, 500));
         response.status(500).json({ error: "We couldn't load that quote card right now." });
         return;
       }
@@ -471,6 +500,13 @@ export function createQuoteCardRouter() {
       const blob = await fetchResponse.blob();
       const arrayBuffer = await blob.arrayBuffer();
       const buffer = Buffer.from(arrayBuffer);
+
+      // Verify we got actual image data (at least 100 bytes for a valid PNG)
+      if (buffer.length < 100) {
+        console.error("Downloaded image too small:", buffer.length);
+        response.status(500).json({ error: "We couldn't load that quote card right now." });
+        return;
+      }
 
       response.setHeader("content-type", "image/png");
       response.setHeader("cache-control", "public, max-age=31536000, immutable");
