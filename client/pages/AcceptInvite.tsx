@@ -8,6 +8,7 @@ import { PrivateMark } from "@/components/auth/AuthBoundary";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRelationship } from "@/contexts/RelationshipContext";
 import { Reveal } from "@/components/motion/Reveal";
+import { apiFetch } from "@/lib/api";
 
 export default function AcceptInvite() {
   const { token } = useParams();
@@ -29,7 +30,7 @@ export default function AcceptInvite() {
     setError(null);
     setSending(true);
     try {
-      const response = await fetch(
+      const response = await apiFetch(
         `/api/invites/${encodeURIComponent(inviteToken)}/sign-in-link`,
         {
           method: "POST",

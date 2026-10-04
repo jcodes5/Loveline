@@ -1,6 +1,7 @@
 import { useCallback, useState } from "react";
 
 import { useAuth } from "@/contexts/AuthContext";
+import { apiFetch } from "@/lib/api";
 
 export type StudioPoem = {
   title: string;
@@ -22,7 +23,7 @@ export function useStudioPoetry() {
       setGenerating(true);
       setError(null);
       try {
-        const response = await fetch("/api/ai/draft", {
+        const response = await apiFetch("/api/ai/draft", {
           method: "POST",
           headers: {
             Authorization: `Bearer ${session.access_token}`,

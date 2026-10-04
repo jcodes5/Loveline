@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRelationship } from "@/contexts/RelationshipContext";
 import { supabase } from "@/lib/supabase";
+import { apiFetch } from "@/lib/api";
 
 export type LoveReaction = {
   id: string;
@@ -119,7 +120,7 @@ export function useLoveReactions() {
       setSaving(true);
       setError(null);
       try {
-        const response = await fetch("/api/love-reactions", {
+        const response = await apiFetch("/api/love-reactions", {
           method: "POST",
           headers: {
             ...authHeaders(session.access_token),

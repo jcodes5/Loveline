@@ -170,13 +170,13 @@ export default function Auth() {
       <div className="mx-auto flex min-h-[calc(100vh-4rem)] w-full max-w-6xl items-center justify-center">
         <Reveal className="w-full" y={24} once>
           <div className="grid w-full overflow-hidden rounded-[28px] border border-border bg-surface shadow-elevated lg:grid-cols-[0.9fr_1.1fr]">
-            <section className="relative hidden overflow-hidden bg-[#30242a] px-10 py-12 text-[#fff8f6] lg:flex lg:min-h-[680px] lg:flex-col lg:justify-between lg:px-12">
+            <section className="relative hidden overflow-hidden bg-[#30242a] px-10 py-12 text-[#fff8f6] lg:flex lg:min-h-170 lg:flex-col lg:justify-between lg:px-12">
               <div aria-hidden="true" className="absolute -right-24 -top-20 size-80 animate-float rounded-full bg-primary/30 blur-3xl" />
-              <div aria-hidden="true" className="absolute -bottom-36 -left-16 size-80 animate-float-delayed rounded-full border-[42px] border-primary/15" />
+              <div aria-hidden="true" className="absolute -bottom-36 -left-16 size-80 animate-float-delayed rounded-full border-42px border-primary/15" />
               <div className="relative">
                 <Link to="/" className="inline-flex items-center gap-2.5 text-white" aria-label="Loveline home">
                   <span className="grid size-9 place-items-center rounded-full bg-primary text-primary-foreground">
-                    <Heart className="size-[17px] fill-current" aria-hidden="true" />
+                    <Heart className="size-4.25 fill-current" aria-hidden="true" />
                   </span>
                   <span className="font-display text-[25px] font-semibold">Loveline</span>
                 </Link>

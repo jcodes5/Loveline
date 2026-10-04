@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRelationship } from "@/contexts/RelationshipContext";
 import { supabase } from "@/lib/supabase";
+import { apiFetch } from "@/lib/api";
 
 type MoodSuggestionInput = {
   mood: MoodValue;
@@ -163,7 +164,7 @@ export function useMoodCheckIn() {
         return { error: new Error("Not ready") };
       }
 
-      const response = await fetch("/api/ai/draft", {
+      const response = await apiFetch("/api/ai/draft", {
         method: "POST",
         headers: {
           Authorization: `Bearer ${session?.access_token}`,

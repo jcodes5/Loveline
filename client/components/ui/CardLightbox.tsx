@@ -1,3 +1,4 @@
+import { apiFetch } from "@/lib/api";
 import { useEffect, useRef, useState } from "react";
 import { Download, Loader2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -80,7 +81,7 @@ export function CardLightbox({ card, onClose }: CardLightboxProps) {
       // This uses @resvg/resvg-js on the server to render a true, native PNG with all bundled fonts.
       if (session?.access_token && card.relationshipId) {
         try {
-          const renderRes = await fetch("/api/quote-cards/render", {
+          const renderRes = await apiFetch("/api/quote-cards/render", {
             method: "POST",
             headers: {
               Authorization: `Bearer ${session.access_token}`,

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import { useAuth } from "@/contexts/AuthContext";
 import { useRelationship } from "@/contexts/RelationshipContext";
+import { apiFetch } from "@/lib/api";
 
 export type Memory = {
   id: string;
@@ -105,7 +106,7 @@ export function useMemories() {
       setError(null);
       try {
         const dataUrl = await fileAsDataUrl(file);
-        const response = await fetch("/api/memories", {
+        const response = await apiFetch("/api/memories", {
           method: "POST",
           headers: {
             ...authHeaders(session.access_token),
@@ -145,7 +146,7 @@ export function useMemories() {
 
       setSaving(true);
       setError(null);
-      const response = await fetch(`/api/memories/${encodeURIComponent(id)}`, {
+      const response = await apiFetch(`/api/memories/${encodeURIComponent(id)}`, {
         method: "DELETE",
         headers: authHeaders(session.access_token),
       });
@@ -167,7 +168,7 @@ export function useMemories() {
         return { error: new Error("Your Loveline connection is not ready yet.") };
       }
 
-      const response = await fetch(`/api/memories/${encodeURIComponent(id)}`, {
+      const response = await apiFetch(`/api/memories/${encodeURIComponent(id)}`, {
         method: "PATCH",
         headers: {
           ...authHeaders(session.access_token),
@@ -195,7 +196,7 @@ export function useMemories() {
         return { error: new Error("Your Loveline connection is not ready yet.") };
       }
 
-      const response = await fetch(`/api/memories/${encodeURIComponent(id)}`, {
+      const response = await apiFetch(`/api/memories/${encodeURIComponent(id)}`, {
         method: "PATCH",
         headers: {
           ...authHeaders(session.access_token),
@@ -219,7 +220,7 @@ export function useMemories() {
 
   const updateNotes = useCallback(async (id: string, notes: string) => {
     if (!session?.access_token) return { error: new Error("Your Loveline connection is not ready yet.") };
-    const response = await fetch(`/api/memories/${encodeURIComponent(id)}`, {
+    const response = await apiFetch(`/api/memories/${encodeURIComponent(id)}`, {
       method: "PATCH",
       headers: { ...authHeaders(session.access_token), "content-type": "application/json" },
       body: JSON.stringify({ notes }),

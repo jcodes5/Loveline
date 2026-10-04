@@ -14,6 +14,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useRelationship } from "@/contexts/RelationshipContext";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
+import { apiFetch } from "@/lib/api";
 
 type AIDraftType = "daily_affirmation" | "morning_message" | "night_message" | "quote_card" | "mood_suggestion" | "batch_daily";
 
@@ -132,7 +133,7 @@ export default function AIWorkspace() {
         payload.count = 3;
       }
 
-      const response = await fetch("/api/ai/draft", {
+      const response = await apiFetch("/api/ai/draft", {
         method: "POST",
         headers: {
           Authorization: `Bearer ${session.access_token}`,

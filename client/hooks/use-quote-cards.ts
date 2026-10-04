@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import { useAuth } from "@/contexts/AuthContext";
 import { useRelationship } from "@/contexts/RelationshipContext";
+import { apiFetch } from "@/lib/api";
 
 export type QuoteCardPalette = "rose" | "dusk" | "honey";
 export type QuoteCardTemplate =
@@ -114,7 +115,7 @@ export function useQuoteCards() {
       setSaving(true);
       setError(null);
       try {
-        const response = await fetch("/api/quote-cards", {
+        const response = await apiFetch("/api/quote-cards", {
           method: "POST",
           headers: {
             ...authHeaders(session.access_token),
@@ -148,7 +149,7 @@ export function useQuoteCards() {
       setSaving(true);
       setError(null);
       try {
-        const response = await fetch("/api/quote-cards/render", {
+        const response = await apiFetch("/api/quote-cards/render", {
           method: "POST",
           headers: {
             ...authHeaders(session.access_token),
@@ -179,7 +180,7 @@ export function useQuoteCards() {
 
       setSaving(true);
       setError(null);
-      const response = await fetch(`/api/quote-cards/${encodeURIComponent(id)}`, {
+      const response = await apiFetch(`/api/quote-cards/${encodeURIComponent(id)}`, {
         method: "DELETE",
         headers: authHeaders(session.access_token),
       });

@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRelationship } from "@/contexts/RelationshipContext";
 import { supabase } from "@/lib/supabase";
+import { apiFetch } from "@/lib/api";
 
 export type DailyContent = {
   id: string;
@@ -195,7 +196,7 @@ export function useDailyContentWorkspace(): DailyContentWorkspaceState {
 
       setDrafting(true);
       try {
-        const response = await fetch("/api/ai/draft", {
+        const response = await apiFetch("/api/ai/draft", {
           method: "POST",
           headers: {
             Authorization: `Bearer ${session.access_token}`,
